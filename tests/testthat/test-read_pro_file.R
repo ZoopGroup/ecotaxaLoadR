@@ -1,6 +1,6 @@
 testthat::test_that("load_pro_files works with test directory containing PRO files", {
-  # Test with directory containing both PRO files
-  test_dir <- testthat::test_path("test-data", "pro_files")
+  # Test with directory containing SIO PRO files
+  test_dir <- testthat::test_path("test-data", "sio_pro_files")
 
   testthat::expect_true(
     dir.exists(test_dir),
@@ -36,7 +36,7 @@ testthat::test_that("load_pro_files works with test directory containing PRO fil
 
 testthat::test_that("load_pro_files works with daynight parameter", {
   # Test with daynight enabled
-  test_dir <- testthat::test_path("test-data", "pro_files")
+  test_dir <- testthat::test_path("test-data", "sio_pro_files")
 
   testthat::expect_true(
     dir.exists(test_dir),
@@ -85,7 +85,7 @@ testthat::test_that("load_pro_files handles empty directory", {
 
 testthat::test_that("ingest_pro_file works with MOC8 PRO file", {
   # Test with MOC8 file
-  pro_file <- testthat::test_path("test-data", "pro_files", "MOC8_08A.PRO")
+  pro_file <- testthat::test_path("test-data", "sio_pro_files", "MOC8_08A.PRO")
 
   testthat::expect_true(file.exists(pro_file))
 
@@ -126,7 +126,7 @@ testthat::test_that("ingest_pro_file works with MOC8 PRO file", {
 
 testthat::test_that("ingest_pro_file works with MOC5 PRO file", {
   # Test with MOC5 file
-  pro_file <- testthat::test_path("test-data", "pro_files", "MOC5_05A.PRO")
+  pro_file <- testthat::test_path("test-data", "sio_pro_files", "MOC5_05A.PRO")
 
   testthat::expect_true(file.exists(pro_file))
 
@@ -172,7 +172,7 @@ testthat::test_that("ingest_pro_file works with MOC5 PRO file", {
 
 testthat::test_that("ingest_pro_file daynight parameter works correctly", {
   # Test with MOC5 file and daynight annotation
-  pro_file <- testthat::test_path("test-data", "pro_files", "MOC5_05A.PRO")
+  pro_file <- testthat::test_path("test-data", "sio_pro_files", "MOC5_05A.PRO")
 
   testthat::expect_true(file.exists(pro_file))
 
@@ -198,7 +198,7 @@ testthat::test_that("ingest_pro_file daynight parameter works correctly", {
 testthat::test_that("ingest_pro_file fails with non-existent file", {
   non_existent_file <- testthat::test_path(
     "test-data",
-    "pro_files",
+    "sio_pro_files",
     "nonexistent.PRO"
   )
 
@@ -223,8 +223,8 @@ testthat::test_that("ingest_pro_file handles invalid file path", {
 
 testthat::test_that("ingest_pro_file returns consistent structure across files", {
   pro_files <- c(
-    moc8 = testthat::test_path("test-data", "pro_files", "MOC8_08A.PRO"),
-    moc5 = testthat::test_path("test-data", "pro_files", "MOC5_05A.PRO")
+    moc8 = testthat::test_path("test-data", "sio_pro_files", "MOC8_08A.PRO"),
+    moc5 = testthat::test_path("test-data", "sio_pro_files", "MOC5_05A.PRO")
   )
 
   results <- purrr::map(pro_files, ecotaxaLoadR::ingest_pro_file)
@@ -248,7 +248,7 @@ testthat::test_that("ingest_pro_file returns consistent structure across files",
 })
 
 testthat::test_that("ingest_pro_file preserves data integrity", {
-  pro_file <- testthat::test_path("test-data", "pro_files", "MOC5_05A.PRO")
+  pro_file <- testthat::test_path("test-data", "sio_pro_files", "MOC5_05A.PRO")
 
   result <- ecotaxaLoadR::ingest_pro_file(pro_file)
 
@@ -295,11 +295,11 @@ testthat::test_that("ingest_pro_file preserves data integrity", {
 })
 
 testthat::test_that("load_pro_files processes both test files successfully", {
-  test_dir <- testthat::test_path("test-data", "pro_files")
-
+  test_dir <- testthat::test_path("test-data", "sio_pro_files")
+  
   result <- ecotaxaLoadR::load_pro_files(test_dir)
 
-  # Should process both files
+  # Should process both SIO files
   testthat::expect_equal(length(result), 2)
 
   # Check that no files failed
@@ -322,6 +322,7 @@ testthat::test_that("load_pro_files processes both test files successfully", {
       testthat::expect_true(.y, info = paste("Should have", .x, "in summary"))
     }
   )
+  
 })
 
 # NEW TESTS FOR METADATA EXTRACTION
