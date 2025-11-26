@@ -34,8 +34,8 @@
 extract_bess_pro_metadata <- function(file_path) {
   
   # Read first 20 lines to capture all header information
-  header_lines <- readLines(file_path, n = 20) |>
-    str_trim()
+  header_lines <- readLines(file_path, n = 20)
+  header_lines <- stringr::str_trim(header_lines)
   
   # Extract comment lines (start with %)
   comment_lines <- header_lines[stringr::str_detect(header_lines, "^%")]
@@ -112,8 +112,8 @@ extract_bess_pro_metadata <- function(file_path) {
         }
       })
     }) |>
-    list_flatten() |>
-    compact()
+    purrr::list_flatten() |>
+    purrr::compact()
     
     metadata$instrument_probes <- probe_info
   }
@@ -131,8 +131,8 @@ extract_bess_pro_metadata <- function(file_path) {
   column_line <- comment_lines[stringr::str_detect(comment_lines, "^%\\s*(time\\s+pres|time\\s.*pres)")]
   if (length(column_line) > 0) {
     # Remove leading % and extra whitespace, then split on whitespace
-    headers_clean <- stringr::str_remove(column_line[1], "^%\\s*") |>
-      stringr::str_trim()
+    headers_clean <- stringr::str_remove(column_line[1], "^%\\s*")
+    headers_clean <- stringr::str_trim(headers_clean)
     
     # Split on one or more whitespace characters
     column_names <- stringr::str_split(headers_clean, "\\s+")[[1]]
@@ -187,8 +187,8 @@ ingest_bess_pro_file <- function(file_path) {
       "fluor",
       "ptran",
       "oxygen",
-      "Irradcurrent",
-      "Irradiance",
+      "IrC",
+      "Irrad",
       "lat",
       "lon"
     )
@@ -197,13 +197,23 @@ ingest_bess_pro_file <- function(file_path) {
   # Read data using readr
   pro_data <- tryCatch(
     {
-      readr::read_table(
+      data <- readr::read_table(
         file_path,
         skip = data_start - 1,
         col_names = col_names,
         col_types = readr::cols(.default = readr::col_double()),
         show_col_types = FALSE
       )
+      
+      # Rename columns to match SIO format if they exist
+      if ("Irradcurrent" %in% names(data)) {
+        data <- dplyr::rename(data, IrC = Irradcurrent)
+      }
+      if ("Irradiance" %in% names(data)) {
+        data <- dplyr::rename(data, Irrad = Irradiance)
+      }
+      
+      data
     },
     error = function(e) {
       rlang::abort(paste(
@@ -223,6 +233,44 @@ ingest_bess_pro_file <- function(file_path) {
       vessel = metadata$vessel,
       date_string = metadata$date_string,
       parsed_date = metadata$parsed_date,
+      # Add instrument probe information
+      temperature_probe = {
+        temp_probes <- sapply(metadata$instrument_probes, function(x) {
+          if(!is.null(x) && x$instrument == "Temperature") as.character(x$probe_number) else NA_character_
+        })
+        temp_probes <- temp_probes[!is.na(temp_probes)]
+        if(length(temp_probes) > 0) paste(temp_probes, collapse = ",") else NA_character_
+      },
+      conductivity_probe = {
+        cond_probes <- sapply(metadata$instrument_probes, function(x) {
+          if(!is.null(x) && x$instrument == "Conductivity") as.character(x$probe_number) else NA_character_
+        })
+        cond_probes <- cond_probes[!is.na(cond_probes)]
+        if(length(cond_probes) > 0) paste(cond_probes, collapse = ",") else NA_character_
+      },
+      pressure_probe = {
+        pres_probes <- sapply(metadata$instrument_probes, function(x) {
+          if(!is.null(x) && x$instrument == "Pressure") as.character(x$probe_number) else NA_character_
+        })
+        pres_probes <- pres_probes[!is.na(pres_probes)]
+        if(length(pres_probes) > 0) paste(pres_probes, collapse = ",") else NA_character_
+      },
+      oxygen_probe = {
+        oxy_probes <- sapply(metadata$instrument_probes, function(x) {
+          if(!is.null(x) && x$instrument == "Oxygen") as.character(x$probe_number) else NA_character_
+        })
+        oxy_probes <- oxy_probes[!is.na(oxy_probes)]
+        if(length(oxy_probes) > 0) paste(oxy_probes, collapse = ",") else NA_character_
+      },
+      fluorometer = {
+        fluor_probes <- sapply(metadata$instrument_probes, function(x) {
+          if(!is.null(x) && x$instrument == "Fluorometer") as.character(x$probe_number) else NA_character_
+        })
+        fluor_probes <- fluor_probes[!is.na(fluor_probes)]
+        if(length(fluor_probes) > 0) paste(fluor_probes, collapse = ",") else NA_character_
+      },
+      flow_meter_calibration = metadata$flow_meter_calibration,
+      flow_meter_units = ifelse(!is.na(metadata$flow_meter_calibration), "(m/count)", NA_character_),
       .before = 1
     )
   
@@ -249,24 +297,28 @@ ingest_bess_pro_file <- function(file_path) {
 #' Batch processes BESS PRO files from specified directory or file list.
 #' Includes parallel processing support and comprehensive error handling.
 #'
-#' @param file_paths Character vector of file paths, or directory path
-#' @param pattern Character. File pattern to match if file_paths is directory
+#' @param directory Character string. Directory path containing PRO files.
+#'   Default is current directory (".")
+#' @param pattern Character. File pattern to match (default: "\\.(PRO|pro)$")
 #' @param parallel Logical. Use parallel processing (default: FALSE)
-#' @param add_daynight Logical. Add day/night annotation (default: TRUE)
+#' @param daynight Logical. Whether to annotate the data with day-night 
+#'   designation based on ship position and time of collection. Default is FALSE.
 #' @param progress Logical. Show progress bar (default: TRUE)
 #' @return Tibble with combined data from all processed files
 #' @export
 load_bess_pro_files <- function(
-  file_paths,
+  directory = ".",
   pattern = "\\.(PRO|pro)$",
   parallel = FALSE,
-  add_daynight = TRUE,
+  daynight = FALSE,
   progress = TRUE
 ) {
 
-  # Handle directory input
-  if (length(file_paths) == 1 && dir.exists(file_paths)) {
-    file_paths <- list.files(file_paths, pattern = pattern, full.names = TRUE)
+  # Handle directory input (matching load_pro_files behavior)
+  if (length(directory) == 1 && dir.exists(directory)) {
+    file_paths <- list.files(directory, pattern = pattern, full.names = TRUE)
+  } else {
+    file_paths <- directory  # Assume it's a vector of file paths
   }
 
   # Validate files exist
@@ -342,7 +394,7 @@ load_bess_pro_files <- function(
 
   # Add day/night annotation if requested and possible
   if (
-    add_daynight &&
+    daynight &&
       all(c("lat", "lon", "datetime_gmt") %in% names(combined_data))
   ) {
     if (progress) {
