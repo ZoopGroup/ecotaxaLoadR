@@ -441,8 +441,7 @@ extract_pro_metadata <- function(file_path) {
 #' }
 #'
 #' @importFrom lubridate as_datetime days seconds
-#'
-#' @keywords internal
+#' @export
 convert_doy_to_datetime <- function(
   doy_decimal,
   year,
