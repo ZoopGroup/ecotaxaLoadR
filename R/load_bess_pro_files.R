@@ -392,6 +392,23 @@ load_bess_pro_files <- function(
   # Combine all data
   combined_data <- dplyr::bind_rows(successful_results)
 
+  # Add timezone and local datetime if coordinates are available
+  if (all(c("lat", "lon", "datetime_gmt") %in% names(combined_data))) {
+    if (progress) {
+      message("Adding timezone and local datetime...")
+    }
+    
+    # Get local timezone from coordinates
+    local_tz <- get_timezone_from_coords(combined_data$lat, combined_data$lon)
+    if (progress) {
+      message("Detected local timezone as: ", local_tz)
+    }
+    
+    # Convert to local time
+    combined_data$datetime_local <- lubridate::with_tz(combined_data$datetime_gmt, local_tz)
+    combined_data$timezone <- local_tz
+  }
+
   # Add day/night annotation if requested and possible
   if (
     daynight &&

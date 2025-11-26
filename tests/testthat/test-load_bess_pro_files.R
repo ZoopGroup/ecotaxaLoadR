@@ -171,7 +171,7 @@ test_that("load_bess_pro_files processes multiple files correctly", {
   
   # Test with file list
   combined_data <- load_bess_pro_files(bess_files, 
-                                       add_daynight = FALSE,
+                                       daynight = FALSE,
                                        progress = FALSE)
   
   expect_s3_class(combined_data, "data.frame")
@@ -186,7 +186,7 @@ test_that("load_bess_pro_files processes multiple files correctly", {
   # Test with directory path
   combined_data2 <- load_bess_pro_files(test_dir, 
                                         pattern = "^M[-_].*\\.PRO$",
-                                        add_daynight = FALSE,
+                                        daynight = FALSE,
                                         progress = FALSE)
   
   expect_equal(nrow(combined_data), nrow(combined_data2))
@@ -204,7 +204,7 @@ test_that("load_bess_pro_files adds day/night annotation when requested", {
   
   # Load with day/night annotation
   combined_data <- load_bess_pro_files(bess_files, 
-                                       add_daynight = TRUE,
+                                       daynight = TRUE,
                                        progress = FALSE)
   
   # Check day/night columns are added
@@ -238,7 +238,7 @@ test_that("BESS workflow integrates correctly with annotate_daytime", {
   
   # Load without daynight first
   pro_data <- load_bess_pro_files(bess_files, 
-                                  add_daynight = FALSE,
+                                  daynight = FALSE,
                                   progress = FALSE)
   
   # Apply annotate_daytime separately
@@ -246,7 +246,7 @@ test_that("BESS workflow integrates correctly with annotate_daytime", {
   
   # Compare with built-in annotation
   built_in_data <- load_bess_pro_files(bess_files, 
-                                       add_daynight = TRUE,
+                                       daynight = TRUE,
                                        progress = FALSE)
   
   # Should have same day/night classifications
