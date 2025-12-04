@@ -27,4 +27,3 @@ convert_doy_to_datetime(100.5, 2024, "GMT")
 }
 
 }
-\keyword{internal}

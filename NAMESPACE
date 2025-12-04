@@ -2,6 +2,7 @@
 
 export(annotate_daytime)
 export(check_parallel_ecotaxa)
+export(convert_doy_to_datetime)
 export(extract_bess_pro_metadata)
 export(ingest_bess_pro_file)
 export(ingest_pro_file)

@@ -5,21 +5,23 @@
 \title{Load and process multiple BESS-formatted PRO files}
 \usage{
 load_bess_pro_files(
-  file_paths,
+  directory = ".",
   pattern = "\\\\.(PRO|pro)$",
   parallel = FALSE,
-  add_daynight = TRUE,
+  daynight = FALSE,
   progress = TRUE
 )
 }
 \arguments{
-\item{file_paths}{Character vector of file paths, or directory path}
+\item{directory}{Character string. Directory path containing PRO files.
+Default is current directory (".")}
 
-\item{pattern}{Character. File pattern to match if file_paths is directory}
+\item{pattern}{Character. File pattern to match (default: "\\.(PRO|pro)$")}
 
 \item{parallel}{Logical. Use parallel processing (default: FALSE)}
 
-\item{add_daynight}{Logical. Add day/night annotation (default: TRUE)}
+\item{daynight}{Logical. Whether to annotate the data with day-night
+designation based on ship position and time of collection. Default is FALSE.}
 
 \item{progress}{Logical. Show progress bar (default: TRUE)}
 }
