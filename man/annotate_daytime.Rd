@@ -35,6 +35,12 @@ to optimize performance, then joins results back. For PRO data, the function
 processes all records individually without deduplication. For EcoTaxa data,
 the function assumes that date and time are in GMT. For PRO data, it uses
 the provided \code{datetime_gmt} column directly.
+
+If coordinates are invalid (non-numeric or out of range: latitude not in
+[-90, 90] or longitude not in [-180, 180]), or if datetime is missing,
+the function sets \code{is_day = NA} for those rows and emits a single
+aggregated warning summarizing the number of invalid rows along with up to
+five example indices and coordinates. Row counts are preserved.
 }
 \note{
 This function uses parallel processing via the \code{furrr}

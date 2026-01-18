@@ -30,6 +30,12 @@
 #'   the function assumes that date and time are in GMT. For PRO data, it uses
 #'   the provided \code{datetime_gmt} column directly.
 #'
+#'   If coordinates are invalid (non-numeric or out of range: latitude not in
+#'   [-90, 90] or longitude not in [-180, 180]), or if datetime is missing,
+#'   the function sets \code{is_day = NA} for those rows and emits a single
+#'   aggregated warning summarizing the number of invalid rows along with up to
+#'   five example indices and coordinates. Row counts are preserved.
+#'
 #' @importFrom dplyr summarize left_join select mutate n distinct
 #' @importFrom furrr future_pmap_lgl
 #' @importFrom SunCalcMeeus is_daytime
@@ -102,6 +108,35 @@ annotate_daytime <- function(data) {
   
   nrow_start <- nrow(data)
   
+  # Helper: validate lat/lon/datetime, return logical mask of valid rows
+  is_valid_geo <- function(lat, lon, date) {
+    suppressWarnings({
+      lat_ok <- !is.na(lat) & is.finite(lat) & lat >= -90 & lat <= 90
+      lon_ok <- !is.na(lon) & is.finite(lon) & lon >= -180 & lon <= 180
+      date_ok <- !is.na(date)
+      lat_ok & lon_ok & date_ok
+    })
+  }
+
+  # Helper: emit aggregated warning with up to 5 example rows
+  warn_invalid_geo <- function(invalid_idx, lat_vals, lon_vals) {
+    if (length(invalid_idx) > 0) {
+      n_show <- min(5L, length(invalid_idx))
+      examples <- paste0(
+        "(", invalid_idx[seq_len(n_show)], ", ",
+        format(lat_vals[seq_len(n_show)], trim = TRUE), ", ",
+        format(lon_vals[seq_len(n_show)], trim = TRUE), ")"
+      )
+      warning(
+        paste0(
+          "annotate_daytime: ", length(invalid_idx),
+          " invalid geocode rows; examples [row, lat, lon]: ",
+          paste(examples, collapse = "; ")
+        )
+      )
+    }
+  }
+
   # Process data based on source type
   if (data_source == "ecotaxa") {
     
@@ -114,24 +149,49 @@ annotate_daytime <- function(data) {
         object_time
       )
     
-    distinct_time_pos$is_day <- furrr::future_pmap_lgl(
-      list(
-        date = as.POSIXct(
-          paste(distinct_time_pos$object_date, distinct_time_pos$object_time),
-          format = "%Y-%m-%d %H:%M:%S",
-          tz = "UTC"
-        ),
-        lat = distinct_time_pos$object_lat,
-        lon = distinct_time_pos$object_lon
-      ),
-      function(date, lat, lon) {
-        SunCalcMeeus::is_daytime(
-          date = date,
-          geocode = tibble::tibble(lat = lat, lon = lon),
-          twilight = "nautical"
-        )
-      }
+    # Compute POSIX datetime for distinct rows
+    dt_distinct <- as.POSIXct(
+      paste(distinct_time_pos$object_date, distinct_time_pos$object_time),
+      format = "%Y-%m-%d %H:%M:%S",
+      tz = "UTC"
     )
+    
+    # Validity mask and initialize is_day with NA
+    valid_mask <- is_valid_geo(
+      lat = distinct_time_pos$object_lat,
+      lon = distinct_time_pos$object_lon,
+      date = dt_distinct
+    )
+    distinct_time_pos$is_day <- rep(NA, nrow(distinct_time_pos))
+    
+    # Compute for valid rows only
+    if (any(valid_mask)) {
+      idx <- which(valid_mask)
+      distinct_time_pos$is_day[idx] <- furrr::future_pmap_lgl(
+        list(
+          date = dt_distinct[idx],
+          lat = distinct_time_pos$object_lat[idx],
+          lon = distinct_time_pos$object_lon[idx]
+        ),
+        function(date, lat, lon) {
+          SunCalcMeeus::is_daytime(
+            date = date,
+            geocode = tibble::tibble(lat = lat, lon = lon),
+            twilight = "nautical"
+          )
+        }
+      )
+    }
+    
+    # Warn aggregated invalid examples using original data indices
+    dt_data <- as.POSIXct(
+      paste(data$object_date, data$object_time),
+      format = "%Y-%m-%d %H:%M:%S",
+      tz = "UTC"
+    )
+    data_valid_mask <- is_valid_geo(lat = data$object_lat, lon = data$object_lon, date = dt_data)
+    invalid_idx <- which(!data_valid_mask)
+    warn_invalid_geo(invalid_idx, data$object_lat[invalid_idx], data$object_lon[invalid_idx])
     
     # Join results back to original data
     data <- data |>
@@ -144,20 +204,31 @@ annotate_daytime <- function(data) {
   } else {
     
     # PRO data processing (apply to all records, no deduplication)
-    data$is_day <- furrr::future_pmap_lgl(
-      list(
-        date = data$datetime_gmt,
-        lat = data$lat,
-        lon = data$lon
-      ),
-      function(date, lat, lon) {
-        SunCalcMeeus::is_daytime(
-          date = date,
-          geocode = tibble::tibble(lat = lat, lon = lon),
-          twilight = "nautical"
-        )
-      }
-    )
+    valid_mask <- is_valid_geo(lat = data$lat, lon = data$lon, date = data$datetime_gmt)
+    
+    # Initialize is_day with NA, then compute for valid rows
+    data$is_day <- rep(NA, nrow(data))
+    if (any(valid_mask)) {
+      idx <- which(valid_mask)
+      data$is_day[idx] <- furrr::future_pmap_lgl(
+        list(
+          date = data$datetime_gmt[idx],
+          lat = data$lat[idx],
+          lon = data$lon[idx]
+        ),
+        function(date, lat, lon) {
+          SunCalcMeeus::is_daytime(
+            date = date,
+            geocode = tibble::tibble(lat = lat, lon = lon),
+            twilight = "nautical"
+          )
+        }
+      )
+    }
+    
+    # Aggregated warning for invalid geocodes
+    invalid_idx <- which(!valid_mask)
+    warn_invalid_geo(invalid_idx, data$lat[invalid_idx], data$lon[invalid_idx])
     
     # Ensure is_day is logical
     data <- data |>
@@ -180,7 +251,7 @@ annotate_daytime <- function(data) {
     stop("The number of rows in the input and output do not match.")
   }
   
-  message("Successfully annotated ", nrow(data), " records with day/night classificationn")
+  message("Successfully annotated ", nrow(data), " records with day/night classification")
 
   return(data)
 }

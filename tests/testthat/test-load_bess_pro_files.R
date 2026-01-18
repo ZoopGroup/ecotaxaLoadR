@@ -212,6 +212,30 @@ test_that("load_bess_pro_files adds day/night annotation when requested", {
   expect_true(all(combined_data$is_day %in% c(TRUE, FALSE), na.rm = TRUE))
 })
 
+test_that("load_bess_pro_files annotates and warns for invalid coords", {
+  # Create a temporary minimal BESS-style file with invalid and valid coords
+  temp_file <- tempfile(fileext = ".PRO")
+  writeLines(c(
+    "% Tow: TEST-INV   TestVessel",
+    "% Date: 1 Jan 2020",
+    "% time    pres    temp    lat    lon",
+    "1.0 0.0 15.0 -999.0 -999.0",
+    "1.1 1.0 14.9 34.0 -120.0"
+  ), temp_file)
+
+  # Load with daynight annotation and expect a warning
+  expect_warning(
+    combined_data <- load_bess_pro_files(c(temp_file), daynight = TRUE, progress = FALSE),
+    "invalid geocode rows"
+  )
+  expect_true("is_day" %in% names(combined_data))
+  # First row invalid -> NA, second row valid -> not NA
+  expect_true(is.na(combined_data$is_day[1]))
+  expect_false(is.na(combined_data$is_day[2]))
+
+  unlink(temp_file)
+})
+
 test_that("load_bess_pro_files error handling works correctly", {
   
   # Test with non-existent directory

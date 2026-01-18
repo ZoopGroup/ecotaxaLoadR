@@ -233,6 +233,49 @@ testthat::test_that("annotate_daytime handles NA values gracefully", {
   testthat::expect_true(all(!is.na(result$is_day)))
 })
 
+testthat::test_that("annotate_daytime warns and returns NA for invalid PRO geocodes", {
+  # PRO data with invalid and valid coordinates
+  pro_data <- data.frame(
+    lat = c(-999.0, 27.32392, 100.0),           # invalid sentinel, valid, invalid range
+    lon = c(-999.0, -111.28438, 200.0),        # invalid sentinel, valid, invalid range
+    datetime_gmt = as.POSIXct(c(
+      "2024-05-04 12:00:00",
+      "2024-05-04 12:00:00",
+      "2024-05-04 12:00:00"
+    ), tz = "UTC"),
+    stringsAsFactors = FALSE
+  )
+
+  # Expect a single aggregated warning and NA for invalid rows
+  testthat::expect_warning(
+    result <- ecotaxaLoadR::annotate_daytime(pro_data),
+    "invalid geocode rows"
+  )
+  testthat::expect_true("is_day" %in% names(result))
+  testthat::expect_true(is.na(result$is_day[1]))
+  testthat::expect_false(is.na(result$is_day[2]))
+  testthat::expect_true(is.na(result$is_day[3]))
+})
+
+testthat::test_that("annotate_daytime warns and returns NA for invalid EcoTaxa geocodes", {
+  eco_data <- data.frame(
+    object_lat = c(34.5, -999.0, 91.0),        # valid, invalid sentinel, invalid range
+    object_lon = c(-120.5, -999.0, -181.0),    # valid, invalid sentinel, invalid range
+    object_date = c("2024-06-15", "2024-06-15", "2024-06-15"),
+    object_time = c("12:00:00", "12:00:00", "12:00:00"),
+    stringsAsFactors = FALSE
+  )
+
+  testthat::expect_warning(
+    result <- ecotaxaLoadR::annotate_daytime(eco_data),
+    "invalid geocode rows"
+  )
+  testthat::expect_true("is_day" %in% names(result))
+  testthat::expect_false(is.na(result$is_day[1]))
+  testthat::expect_true(is.na(result$is_day[2]))
+  testthat::expect_true(is.na(result$is_day[3]))
+})
+
 testthat::test_that("annotate_daytime processes PRO data without deduplication", {
   # PRO data where each record should be processed individually
   pro_data <- data.frame(

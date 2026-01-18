@@ -295,12 +295,11 @@ ingest_bess_pro_file <- function(file_path) {
 #' Load and process multiple BESS-formatted PRO files
 #'
 #' Batch processes BESS PRO files from specified directory or file list.
-#' Includes parallel processing support and comprehensive error handling.
+#' Includes comprehensive error handling.
 #'
 #' @param directory Character string. Directory path containing PRO files.
 #'   Default is current directory (".")
 #' @param pattern Character. File pattern to match (default: "\\.(PRO|pro)$")
-#' @param parallel Logical. Use parallel processing (default: FALSE)
 #' @param daynight Logical. Whether to annotate the data with day-night 
 #'   designation based on ship position and time of collection. Default is FALSE.
 #' @param progress Logical. Show progress bar (default: TRUE)
@@ -309,7 +308,6 @@ ingest_bess_pro_file <- function(file_path) {
 load_bess_pro_files <- function(
   directory = ".",
   pattern = "\\.(PRO|pro)$",
-  parallel = FALSE,
   daynight = FALSE,
   progress = TRUE
 ) {
@@ -347,35 +345,11 @@ load_bess_pro_files <- function(
     )
   }
 
-  # Process files (parallel or sequential)
-  if (parallel) {
-    # Use future/furrr for parallel processing if available
-    if (
-      requireNamespace("furrr", quietly = TRUE) &&
-        requireNamespace("future", quietly = TRUE)
-    ) {
-      if (progress) {
-        message("Processing ", length(file_paths), " files in parallel...")
-      }
-
-      results <- furrr::future_map(
-        file_paths,
-        process_file,
-        .progress = progress,
-        .options = furrr::furrr_options(seed = TRUE)
-      )
-    } else {
-      rlang::warn(
-        "Parallel processing packages not available. Using sequential processing."
-      )
-      results <- purrr::map(file_paths, process_file, .progress = progress)
-    }
-  } else {
-    if (progress) {
-      message("Processing ", length(file_paths), " files sequentially...")
-    }
-    results <- purrr::map(file_paths, process_file, .progress = progress)
+  # Process files sequentially (annotation parallelism handled by annotate_daytime)
+  if (progress) {
+    message("Processing ", length(file_paths), " files...")
   }
+  results <- purrr::map(file_paths, process_file)
 
   # Remove failed files and combine results
   successful_results <- purrr::compact(results)
@@ -398,13 +372,33 @@ load_bess_pro_files <- function(
       message("Adding timezone and local datetime...")
     }
     
-    # Get local timezone from coordinates
-    local_tz <- get_timezone_from_coords(combined_data$lat, combined_data$lon)
-    if (progress) {
-      message("Detected local timezone as: ", local_tz)
+    # Validate coordinates; handle invalid coordinates gracefully
+    lat <- combined_data$lat
+    lon <- combined_data$lon
+    valid_mask <- !is.na(lat) & is.finite(lat) & lat >= -90 & lat <= 90 &
+      !is.na(lon) & is.finite(lon) & lon >= -180 & lon <= 180
+
+    if (!any(valid_mask)) {
+      rlang::warn(
+        "No valid coordinates found; defaulting timezone to UTC for datetime conversion"
+      )
+      local_tz <- "UTC"
+    } else {
+      if (!all(valid_mask)) {
+        rlang::warn(
+          paste0(
+            sum(!valid_mask),
+            " rows have invalid coordinates; timezone inferred from valid coordinates only"
+          )
+        )
+      }
+      local_tz <- get_timezone_from_coords(lat[valid_mask], lon[valid_mask])
+      if (progress) {
+        message("Detected local timezone as: ", local_tz)
+      }
     }
     
-    # Convert to local time
+    # Convert to local time using inferred/default timezone
     combined_data$datetime_local <- lubridate::with_tz(combined_data$datetime_gmt, local_tz)
     combined_data$timezone <- local_tz
   }

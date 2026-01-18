@@ -7,7 +7,6 @@
 load_bess_pro_files(
   directory = ".",
   pattern = "\\\\.(PRO|pro)$",
-  parallel = FALSE,
   daynight = FALSE,
   progress = TRUE
 )
@@ -18,7 +17,6 @@ Default is current directory (".")}
 
 \item{pattern}{Character. File pattern to match (default: "\\.(PRO|pro)$")}
 
-\item{parallel}{Logical. Use parallel processing (default: FALSE)}
 
 \item{daynight}{Logical. Whether to annotate the data with day-night
 designation based on ship position and time of collection. Default is FALSE.}
@@ -30,5 +28,5 @@ Tibble with combined data from all processed files
 }
 \description{
 Batch processes BESS PRO files from specified directory or file list.
-Includes parallel processing support and comprehensive error handling.
+Includes comprehensive error handling.
 }

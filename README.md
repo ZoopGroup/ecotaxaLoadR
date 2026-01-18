@@ -18,6 +18,14 @@ Install the development version from GitHub:
 devtools::install_github("srearl/ecotaxaLoadR")
 ```
 
+## Workflows Overview
+
+This package provides two main workflows and a set of supporting functions:
+
+1. Loading and formatting EcoTaxa data
+2. Loading project metadata (MOCNESS PRO and PID files, including BESS format)
+3. Supporting functions (day/night annotation, parallel setup, helpers)
+
 ## Data Formats Supported
 
 ### EcoTaxa Exports
@@ -71,21 +79,29 @@ eco_data <- ecotaxaLoadR::load_eco_taxa("data.tsv")
 #### UVP Patterns
 - example: `20120815-183045-123_00001`
 
-## Key Functions
+## Function Categories
 
-| Function | Purpose | New Features |
-|----------|---------|--------------|
-| `ecotaxaLoadR::load_eco_taxa()` | Load and process EcoTaxa TSV files | **Pattern-based object_id parsing** |
-| `ecotaxaLoadR::parse_cruise_id()` | Parse object_id strings using pattern definitions | **Refactored with centralized patterns** |
-| `ecotaxaLoadR::load_pro_files()` | Batch process MOCNESS PRO files | **Added `daynight` parameter** |
-| `ecotaxaLoadR::ingest_pro_file()` | Process individual PRO files | **Enhanced filename parsing, daynight support** |
-| `ecotaxaLoadR::load_pid_files()` | Batch process PID files | **Automatic SampleId parsing** |
-| `ecotaxaLoadR::annotate_daytime()` | Add day/night classification | |
-| `pattern_definitions` | Dataset containing all parsing patterns | **New centralized pattern system** |
+### 1) Loading and Formatting EcoTaxa Data
+- `ecotaxaLoadR::load_eco_taxa()`: Load and process EcoTaxa TSV files.
+- `ecotaxaLoadR::parse_cruise_id()`: Parse `object_id` via centralized `pattern_definitions`.
+- `pattern_definitions`: Dataset of regex patterns (MOC, FlowCam, UVP).
+
+### 2) Loading Project Metadata
+- `ecotaxaLoadR::load_pro_files()`: Batch process SIO-style MOCNESS PRO files; optional `daynight`.
+- `ecotaxaLoadR::load_bess_pro_files()`: Batch process BESS-formatted PRO files; ingestion is sequential; when `daynight = TRUE`, uses `annotate_daytime()`.
+- `ecotaxaLoadR::ingest_pro_file()` / `ingest_bess_pro_file()`: Read and parse individual PRO files.
+- `ecotaxaLoadR::load_pid_files()`: Batch process PID metadata files.
+
+### 3) Supporting Functions
+- `ecotaxaLoadR::annotate_daytime()`: Day/night classification using nautical twilight.
+  - Aggregated warning + `NA` for invalid geocodes (non-numeric or out-of-range).
+  - Parallelized internally via `furrr`; configure with `setup_parallel_ecotaxa()`.
+- `ecotaxaLoadR::setup_parallel_ecotaxa()` / `reset_parallel_ecotaxa()` / `check_parallel_ecotaxa()`: Manage global parallel plan.
+- `convert_doy_to_datetime()`, `get_timezone_from_coords()`: Time conversion and timezone inference helpers.
 
 ## Quick Start
 
-### Loading EcoTaxa Data
+### Loading and Formatting EcoTaxa Data
 
 ```r
 library(ecotaxaLoadR)
@@ -101,7 +117,7 @@ eco_data <- ecotaxaLoadR::load_eco_taxa(
 str(eco_data)
 ```
 
-### Working with MOCNESS Files
+### Loading Project Metadata
 
 ```r
 # Load PRO files from a directory
@@ -116,7 +132,9 @@ pid_data <- ecotaxaLoadR::load_pid_files(
 )
 ```
 
-### Manual Object ID Parsing
+Note on BESS PRO files: `load_bess_pro_files()` no longer accepts a `parallel` argument; ingestion is sequential, while `annotate_daytime()` handles parallelism internally. When coordinates are invalid (non-numeric or out of range), `annotate_daytime()` sets `is_day = NA` and emits a single aggregated warning summarizing invalid rows.
+
+### Supporting Functions
 
 ```r
 # Parse object_id strings directly
@@ -245,7 +263,7 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 If you use this package in your research, please cite:
 
 ```
-Rearl, S. (2024). ecotaxaLoadR: Minimally process and format EcoTaxa resources 
+Earl, S. (2024). ecotaxaLoadR: Minimally process and format EcoTaxa resources 
 for marine ecological analyses. R package version 0.0.0.9000.
 ```
 
