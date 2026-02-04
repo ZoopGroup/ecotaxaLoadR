@@ -122,14 +122,19 @@ str(eco_data)
 ```r
 # Load PRO files from a directory
 pro_data <- ecotaxaLoadR::load_pro_files(
-  file_path = "path/to/pro/files/",
-  daynight = TRUE
+  directory = "path/to/pro/files/",
+  daynight  = TRUE
 )
+
+pro_data |>
+  dplyr::bind_rows() |> 
+  readr::write_csv("pro_data.csv")
 
 # Load PID files
 pid_data <- ecotaxaLoadR::load_pid_files(
-  file_path = "path/to/pid/files/"
+  directory_path = "path/to/pid/files/"
 )
+
 ```
 
 Note on BESS PRO files: `load_bess_pro_files()` no longer accepts a `parallel` argument; ingestion is sequential, while `annotate_daytime()` handles parallelism internally. When coordinates are invalid (non-numeric or out of range), `annotate_daytime()` sets `is_day = NA` and emits a single aggregated warning summarizing invalid rows.
