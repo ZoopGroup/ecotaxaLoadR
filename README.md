@@ -90,6 +90,7 @@ eco_data <- ecotaxaLoadR::load_eco_taxa("data.tsv")
 - `ecotaxaLoadR::load_pro_files()`: Batch process SIO-style MOCNESS PRO files; optional `daynight`.
 - `ecotaxaLoadR::load_bess_pro_files()`: Batch process BESS-formatted PRO files; ingestion is sequential; when `daynight = TRUE`, uses `annotate_daytime()`.
 - `ecotaxaLoadR::ingest_pro_file()` / `ingest_bess_pro_file()`: Read and parse individual PRO files.
+- `ecotaxaLoadR::load_hex_files()`: Extract header metadata (FileName, Ship, Cruise, Tow, Net Size) from Sea-Bird `.hex` files; non-recursive, metadata-only, warnings instead of errors.
 - `ecotaxaLoadR::load_pid_files()`: Batch process PID metadata files.
 
 ### 3) Supporting Functions
@@ -133,6 +134,12 @@ pro_data |>
 # Load PID files
 pid_data <- ecotaxaLoadR::load_pid_files(
   directory_path = "path/to/pid/files/"
+)
+
+# Load HEX header metadata only
+hex_meta <- ecotaxaLoadR::load_hex_files(
+  directory = "path/to/hex/files/",
+  progress = FALSE
 )
 
 ```

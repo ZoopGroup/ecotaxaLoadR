@@ -1,0 +1,34 @@
+* Sea-Bird SBE 9 Data File:
+* FileName = C:\\MOCNESS\\Configuration_Files\\AE2214\\M28_01.hex
+* Software Version Seasave V 7.23.2
+* Temperature SN = 6116
+* Conductivity SN = 2626
+* Number of Bytes Per Scan =  0
+* Number of Voltage Words = 1
+* Number of Scans Averaged by the Deck Unit = 01
+* Append System Time to Every Scan
+* System UpLoad Time = Jul 14 2022 14:08:04
+* NMEA Latitude = 31 40.732N
+* NMEA Longitude = 064 09.057W
+* NMEA UTC (Time) = Jul 14 2022 14:08:04
+* Store Lat/Lon Data = Append to Every Scan
+* SBE 11plus V 5.2
+* number of scans to average = 1
+* pressure baud rate = 9600
+* NMEA baud rate = 4800
+* A/D offset = 0
+* GPIB address = 1
+* advance primary conductivity  0.000 seconds
+* advance secondary conductivity  0.000 seconds
+* autorun on power up is disabled
+** Ship: AE
+** Cruise: AE2214
+** Tow: 01
+** Net Size: 1.0
+** Flow Calibration: 2.750000
+** Flow2 Calibration: 0.000000
+** LVpki Version: 1.00L
+* System UTC = Jul 14 2022 14:08:04
+*END*
+13F3B519E2F78220D7
+13F3B919E2F28220B2

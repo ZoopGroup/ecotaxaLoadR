@@ -2,26 +2,33 @@
 % Please edit documentation in R/load_pro_files.R
 \name{get_timezone_from_coords}
 \alias{get_timezone_from_coords}
-\title{Get timezone from coordinates}
+\title{Get timezone from coordinates (vectorized)}
 \usage{
-get_timezone_from_coords(lat, lon)
+get_timezone_from_coords(lat, lon, cache_precision = 0.1, warn_ocean = TRUE)
 }
 \arguments{
-\item{lat}{Numeric vector. Latitude coordinates.}
+\item{lat}{Numeric vector of latitudes.}
 
-\item{lon}{Numeric vector. Longitude coordinates.}
+\item{lon}{Numeric vector of longitudes.}
+
+\item{cache_precision}{Numeric. Degrees to round lat/lon before caching.
+Default 0.1 (about 11 km).}
+
+\item{warn_ocean}{Logical. Emit a warning if any lookup returns a land
+timezone or NA. Default TRUE.}
 }
 \value{
-Character string representing the timezone (e.g., "America/New_York").
-Returns "GMT" if no valid coordinates are found.
+A list with two equally long vectors:
+\item{timezone}{Character. IANA zone from lutz when available, otherwise fixed-offset Etc/GMT±X}
+\item{utc_offset_hours}{Numeric. Offset hours from UTC (west is negative)}
 }
 \description{
-Determines the timezone based on latitude and longitude
-coordinates using the first valid coordinate pair in the provided vectors.
+Determines timezones and UTC offsets per row using coordinates.
+Results are cached on rounded coordinates to reduce repeated lookups.
 }
 \examples{
-# Get timezone for coordinates in the Pacific
-# ecotaxaLoadR::get_timezone_from_coords(lat = 34.0522, lon = -118.2437)
+# Get timezone info for coordinates in the Pacific
+# tz_info <- ecotaxaLoadR::get_timezone_from_coords(34.0, -118.0)
 
 }
 \keyword{internal}

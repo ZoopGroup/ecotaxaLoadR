@@ -14,9 +14,9 @@ with a day-night designation based on ship position and time of collection.}
 }
 \value{
 A data frame containing the processed PRO file data with additional columns:
-\item{datetime_gmt}{POSIXct. Datetime in GMT timezone}
-\item{datetime_local}{POSIXct. Datetime in local timezone}
-\item{timezone}{Character. Local timezone identifier}
+\item{datetime_gmt}{POSIXct. Datetime in UTC}
+\item{datetime_local}{POSIXct. Local clock time (offset applied, tz stored separately)}
+\item{timezone}{Character. IANA timezone when available, else Etc/GMT±X}
 \item{file_name}{Character. Original filename}
 Plus all metadata fields and original data columns.
 }

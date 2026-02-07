@@ -19,9 +19,9 @@ and instrument details. BESS format uses \% comment lines with specific patterns
 \details{
 BESS format structure:
 \itemize{
-\item \% Tow: \link{tow_id}   \link{vessel_info}
-\item \% Date: \link{date_string}
-\item \% \link{Instrument} Probe # \link{number}
+\item \% Tow: tow_id   vessel_info
+\item \% Date: date_string
+\item \% Instrument Probe # number
 \item \% time    pres  echo ... (column headers)
 }
 }

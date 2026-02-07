@@ -17,7 +17,6 @@ Default is current directory (".")}
 
 \item{pattern}{Character. File pattern to match (default: "\\.(PRO|pro)$")}
 
-
 \item{daynight}{Logical. Whether to annotate the data with day-night
 designation based on ship position and time of collection. Default is FALSE.}
 

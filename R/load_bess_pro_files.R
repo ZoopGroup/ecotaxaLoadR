@@ -21,9 +21,9 @@
 #' @return List containing extracted metadata
 #' @details
 #' BESS format structure:
-#' - % Tow: [tow_id]   [vessel_info]
-#' - % Date: [date_string]  
-#' - % [Instrument] Probe # [number]
+#' - % Tow: tow_id   vessel_info
+#' - % Date: date_string  
+#' - % Instrument Probe # number
 #' - % time    pres  echo ... (column headers)
 #' 
 #' @examples

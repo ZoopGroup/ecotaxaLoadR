@@ -31,7 +31,7 @@
 #'   the provided \code{datetime_gmt} column directly.
 #'
 #'   If coordinates are invalid (non-numeric or out of range: latitude not in
-#'   [-90, 90] or longitude not in [-180, 180]), or if datetime is missing,
+#'   -90 to 90 or longitude not in -180 to 180), or if datetime is missing,
 #'   the function sets \code{is_day = NA} for those rows and emits a single
 #'   aggregated warning summarizing the number of invalid rows along with up to
 #'   five example indices and coordinates. Row counts are preserved.

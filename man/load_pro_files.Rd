@@ -14,8 +14,8 @@ Default is current directory (".").}
 designation based on ship position and time of collection. Default is FALSE.}
 }
 \value{
-A list of data frames, one for each successfully processed PRO file.
-The list has attributes containing processing summary information:
+A single data frame with all successfully processed PRO rows bound
+together. Attributes contain processing summary information:
 \item{failed_files}{Character vector of filenames that failed to process}
 \item{error_messages}{Character vector of corresponding error messages}
 \item{processing_summary}{List with detailed processing information}
@@ -48,9 +48,6 @@ all_data <- load_pro_files(daynight = TRUE)
 
 # Process files in specific directory
 all_data <- load_pro_files("path/to/pro/files")
-
-# Combine all successful files into single data frame
-combined_data <- dplyr::bind_rows(all_data)
 
 # Check for any failed files
 attr(all_data, "failed_files")
