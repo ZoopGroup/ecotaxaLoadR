@@ -179,8 +179,11 @@ test_that("load_bess_pro_files processes multiple files correctly", {
   expect_equal(length(unique(combined_data$file_name)), length(bess_files))
   
   # Check all expected columns are present
-  expected_cols <- c("file_name", "tow_id", "vessel", "date_string", "parsed_date",
-                     "time", "decimal_time", "datetime_gmt", "lat", "lon", "pres", "temp")
+  expected_cols <- c(
+    "file_name", "tow_id", "vessel", "date_string", "parsed_date",
+    "time", "decimal_time", "datetime_gmt", "datetime_local", "timezone",
+    "lat", "lon", "pres", "temp"
+  )
   expect_true(all(expected_cols %in% names(combined_data)))
   
   # Test with directory path

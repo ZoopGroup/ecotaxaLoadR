@@ -11,8 +11,8 @@
 #' @param daynight Boolean. Whether to annotate the data with day-night 
 #'   designation based on ship position and time of collection. Default is FALSE.
 #'
-#' @return A list of data frames, one for each successfully processed PRO file.
-#'   The list has attributes containing processing summary information:
+#' @return A single data frame with all successfully processed PRO rows bound
+#'   together. Attributes contain processing summary information:
 #'   \item{failed_files}{Character vector of filenames that failed to process}
 #'   \item{error_messages}{Character vector of corresponding error messages}
 #'   \item{processing_summary}{List with detailed processing information}
@@ -37,9 +37,6 @@
 #'
 #' # Process files in specific directory
 #' all_data <- load_pro_files("path/to/pro/files")
-#'
-#' # Combine all successful files into single data frame
-#' combined_data <- dplyr::bind_rows(all_data)
 #'
 #' # Check for any failed files
 #' attr(all_data, "failed_files")
@@ -111,6 +108,12 @@ load_pro_files <- function(
   names(pro_data_list) <- basename(pro_files)
   pro_data_list        <- purrr::compact(pro_data_list)
 
+  if (length(pro_data_list) == 0) {
+    stop("No PRO files were successfully processed in ", directory)
+  }
+
+  combined_data <- dplyr::bind_rows(pro_data_list)
+
   # report processing summary
   cat("=== PROCESSING SUMMARY ===\n")
   cat("Total files found:", length(pro_files), "\n")
@@ -133,15 +136,15 @@ load_pro_files <- function(
   cat("\n")
 
   # add failed files information as attributes to the result
-  attr(pro_data_list, "failed_files") <- failed_files
-  attr(pro_data_list, "error_messages") <- error_messages
-  attr(pro_data_list, "processing_summary") <- list(
+  attr(combined_data, "failed_files") <- failed_files
+  attr(combined_data, "error_messages") <- error_messages
+  attr(combined_data, "processing_summary") <- list(
     total_files      = pro_files,
     successful_files = pro_data_list,
     failed_files     = failed_files
   )
 
-  return(pro_data_list)
+  return(combined_data)
 }
 
 
@@ -156,9 +159,9 @@ load_pro_files <- function(
 #'   with a day-night designation based on ship position and time of collection.
 #'
 #' @return A data frame containing the processed PRO file data with additional columns:
-#'   \item{datetime_gmt}{POSIXct. Datetime in GMT timezone}
-#'   \item{datetime_local}{POSIXct. Datetime in local timezone}
-#'   \item{timezone}{Character. Local timezone identifier}
+#'   \item{datetime_gmt}{POSIXct. Datetime in UTC}
+#'   \item{datetime_local}{POSIXct. Local clock time (offset applied, tz stored separately)}
+#'   \item{timezone}{Character. IANA timezone when available, else Etc/GMT±X}
 #'   \item{file_name}{Character. Original filename}
 #'   Plus all metadata fields and original data columns.
 #'
@@ -252,20 +255,16 @@ ingest_pro_file <- function(
 
   # convert time column to datetime
   if ("time" %in% names(data)) {
-    # convert to gmt datetime
     data$datetime_gmt <- convert_doy_to_datetime(
       data$time,
       lubridate::year(metadata$date),
-      "GMT"
+      "UTC"
     )
 
-    # get local timezone from coordinates
-    local_tz <- get_timezone_from_coords(data$lat, data$lon)
-    cat("Detected local timezone as:", local_tz, "\n")
+    tz_info <- get_timezone_from_coords(data$lat, data$lon)
 
-    # convert to local time
-    data$datetime_local <- lubridate::with_tz(data$datetime_gmt, local_tz)
-    data$timezone <- local_tz
+    data$timezone <- tz_info$timezone
+    data$datetime_local <- data$datetime_gmt + lubridate::hours(tz_info$utc_offset_hours)
 
     if (daynight == TRUE) {
       data <- annotate_daytime(data)
@@ -464,41 +463,122 @@ convert_doy_to_datetime <- function(
 }
 
 
-#' @title Get timezone from coordinates
+#' @title Get timezone from coordinates (vectorized)
 #'
-#' @description Determines the timezone based on latitude and longitude
-#' coordinates using the first valid coordinate pair in the provided vectors.
+#' @description Determines timezones and UTC offsets per row using coordinates.
+#' Results are cached on rounded coordinates to reduce repeated lookups.
 #'
-#' @param lat Numeric vector. Latitude coordinates.
-#' @param lon Numeric vector. Longitude coordinates.
+#' @param lat Numeric vector of latitudes.
+#' @param lon Numeric vector of longitudes.
+#' @param cache_precision Numeric. Degrees to round lat/lon before caching.
+#'   Default 0.1 (about 11 km).
+#' @param warn_ocean Logical. Emit a warning if any lookup returns a land
+#'   timezone or NA. Default TRUE.
 #'
-#' @return Character string representing the timezone (e.g., "America/New_York").
-#'   Returns "GMT" if no valid coordinates are found.
+#' @return A list with two equally long vectors:
+#'   \item{timezone}{Character. IANA zone from lutz when available, otherwise fixed-offset Etc/GMT±X}
+#'   \item{utc_offset_hours}{Numeric. Offset hours from UTC (west is negative)}
 #'
 #' @examples
-#' # Get timezone for coordinates in the Pacific
-#' # ecotaxaLoadR::get_timezone_from_coords(lat = 34.0522, lon = -118.2437)
+#' # Get timezone info for coordinates in the Pacific
+#' # tz_info <- ecotaxaLoadR::get_timezone_from_coords(34.0, -118.0)
 #'
 #' @importFrom lutz tz_lookup_coords
 #'
 #' @keywords internal
 get_timezone_from_coords <- function(
   lat,
-  lon
+  lon,
+  cache_precision = 0.1,
+  warn_ocean = TRUE
 ) {
-  # use the first non-na coordinate pair to determine timezone
-  valid_coords <- which(!is.na(lat) & !is.na(lon))
+  n <- max(length(lat), length(lon))
 
-  if (length(valid_coords) > 0) {
-    first_valid <- valid_coords[1]
-    tz <- lutz::tz_lookup_coords(
-      lat = lat[first_valid],
-      lon = lon[first_valid],
-      method = "accurate"
-    )
-
-    return(tz)
+  if (n == 0) {
+    return(list(
+      timezone = character(0),
+      timezone_name = character(0),
+      utc_offset_hours = numeric(0)
+    ))
   }
 
-  return("GMT") # Default to GMT if no valid coordinates
+  # recycle shorter input if needed
+  lat <- rep_len(lat, n)
+  lon <- rep_len(lon, n)
+
+  valid <- is.finite(lat) & is.finite(lon) & lat >= -90 & lat <= 90 &
+    lon >= -180 & lon <= 180
+
+  offset_hours <- rep(NA_real_, n)
+  offset_hours[valid] <- round(lon[valid] / 15)
+
+  etc_label <- rep(NA_character_, n)
+  etc_label[valid] <- paste0(
+    "Etc/GMT",
+    ifelse(offset_hours[valid] > 0, "-", "+"),
+    abs(offset_hours[valid])
+  )
+
+  tz_lookup <- rep(NA_character_, n)
+  timezone_name <- rep(NA_character_, n)
+
+  if (any(valid)) {
+    lat_r <- round(lat[valid] / cache_precision) * cache_precision
+    lon_r <- round(lon[valid] / cache_precision) * cache_precision
+    keys <- paste(lat_r, lon_r, sep = "|")
+    unique_keys <- unique(keys)
+
+    cache <- new.env(parent = emptyenv())
+    for (k in unique_keys) {
+      parts <- strsplit(k, "|", fixed = TRUE)[[1]]
+      lat_k <- as.numeric(parts[1])
+      lon_k <- as.numeric(parts[2])
+      tz_val <- tryCatch(
+        lutz::tz_lookup_coords(lat = lat_k, lon = lon_k, method = "accurate"),
+        error = function(e) NA_character_
+      )
+      assign(k, tz_val, envir = cache)
+    }
+
+    tz_lookup[valid] <- vapply(
+      keys,
+      function(k) get(k, envir = cache, inherits = FALSE),
+      character(1)
+    )
+
+    timezone_name <- ifelse(
+      !is.na(tz_lookup) & !grepl("^Etc/", tz_lookup),
+      tz_lookup,
+      NA_character_
+    )
+
+    land_rows <- valid & !is.na(timezone_name)
+    missing_rows <- valid & is.na(tz_lookup)
+
+    if (warn_ocean && any(land_rows)) {
+      warning(
+        sprintf(
+          "%s rows have non-ocean timezones; data are assumed to be oceanic",
+          sum(land_rows)
+        ),
+        call. = FALSE
+      )
+    }
+    if (warn_ocean && any(missing_rows)) {
+      warning(
+        sprintf(
+          "%s rows had no timezone match; falling back to lon-derived offsets",
+          sum(missing_rows)
+        ),
+        call. = FALSE
+      )
+    }
+  }
+
+  timezone_out <- ifelse(!is.na(tz_lookup), tz_lookup, etc_label)
+
+  list(
+    timezone = timezone_out,
+    utc_offset_hours = offset_hours
+  )
 }

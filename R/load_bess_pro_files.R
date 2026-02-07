@@ -382,7 +382,11 @@ load_bess_pro_files <- function(
       rlang::warn(
         "No valid coordinates found; defaulting timezone to UTC for datetime conversion"
       )
-      local_tz <- "UTC"
+      tz_info <- list(
+        timezone = rep("Etc/GMT", length.out = nrow(combined_data)),
+        timezone_name = rep(NA_character_, length.out = nrow(combined_data)),
+        utc_offset_hours = rep(0, length.out = nrow(combined_data))
+      )
     } else {
       if (!all(valid_mask)) {
         rlang::warn(
@@ -392,15 +396,19 @@ load_bess_pro_files <- function(
           )
         )
       }
-      local_tz <- get_timezone_from_coords(lat[valid_mask], lon[valid_mask])
+      tz_info <- get_timezone_from_coords(lat, lon, warn_ocean = FALSE)
       if (progress) {
-        message("Detected local timezone as: ", local_tz)
+        message(
+          "Detected local timezone offsets spanning: ",
+          paste(range(na.omit(tz_info$utc_offset_hours)), collapse = " to "),
+          " hours"
+        )
       }
     }
     
-    # Convert to local time using inferred/default timezone
-    combined_data$datetime_local <- lubridate::with_tz(combined_data$datetime_gmt, local_tz)
-    combined_data$timezone <- local_tz
+    combined_data$timezone <- tz_info$timezone
+    combined_data$datetime_local <- combined_data$datetime_gmt +
+      lubridate::hours(tz_info$utc_offset_hours)
   }
 
   # Add day/night annotation if requested and possible
