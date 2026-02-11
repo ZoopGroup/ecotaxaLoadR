@@ -92,6 +92,7 @@ eco_data <- ecotaxaLoadR::load_eco_taxa("data.tsv")
 - `ecotaxaLoadR::ingest_pro_file()` / `ingest_bess_pro_file()`: Read and parse individual PRO files.
 - `ecotaxaLoadR::load_hex_files()`: Extract header metadata (FileName, Ship, Cruise, Tow, Net Size) from Sea-Bird `.hex` files; non-recursive, metadata-only, warnings instead of errors.
 - `ecotaxaLoadR::load_pid_files()`: Batch process PID metadata files.
+- `ecotaxaLoadR::build_master()`: Summarize PRO tow/net casts and append HEX `net_size` metadata.
 
 ### 3) Supporting Functions
 - `ecotaxaLoadR::annotate_daytime()`: Day/night classification using nautical twilight.
@@ -140,6 +141,12 @@ pid_data <- ecotaxaLoadR::load_pid_files(
 hex_meta <- ecotaxaLoadR::load_hex_files(
   directory = "path/to/hex/files/",
   progress = FALSE
+)
+
+# Build master tow-level table (PRO summaries + HEX net size)
+master <- ecotaxaLoadR::build_master(
+  pro_data_file = pro_data,
+  hex_data_file = hex_meta
 )
 
 ```
