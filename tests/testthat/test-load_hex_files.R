@@ -1,7 +1,7 @@
 library(testthat)
 library(dplyr)
 
-hex_dir <- here::here("tests", "testthat", "test-data", "hex_files")
+hex_dir <- testthat::test_path("test-data", "hex_files")
 
 
 test_that("ingest_hex_file extracts header metadata", {
@@ -33,6 +33,9 @@ test_that("ingest_hex_file warns and fills NA on missing fields", {
 
 
 test_that("load_hex_files batches non-recursively and respects progress flag", {
+  skip_if_not(file.exists(file.path(hex_dir, "M28_01.hex")), "Hex test file missing")
+  skip_if_not(file.exists(file.path(hex_dir, "MOC3_03.hex")), "Hex test file missing")
+
   base_dir <- file.path(tempdir(), paste0("hex_tmp_", as.integer(runif(1, 1, 1e6))))
   dir.create(base_dir, recursive = TRUE)
 

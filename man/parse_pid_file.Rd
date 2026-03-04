@@ -11,7 +11,8 @@ parse_pid_file(file_path)
 }
 \value{
 A list containing three elements:
-\item{image_metadata}{Tibble with metadata sections from the file header}
+\item{image_metadata}{Tibble with metadata sections from the file header,
+including normalized \code{sample_id} for each row}
 \item{image_records}{Tibble with basic image information (scan_id, image_number)}
 \item{image_attributes}{Tibble with detailed image attributes and measurements}
 }

@@ -7,7 +7,8 @@
 #'   Default is "\\.pid$" to match files ending in .pid.
 #'
 #' @return A list containing:
-#'   \item{metadata}{Tibble with combined metadata from all files}
+#'   \item{metadata}{Tibble with combined metadata from all files, including normalized
+#'     \code{sample_id} for each row}
 #'   \item{records}{Tibble with combined iage records from all files}
 #'   \item{attributes}{Tibble with combined image attributes from all files}
 #'   \item{file_count}{Integer. Number of files processed}
@@ -133,7 +134,8 @@ load_pid_files <- function(
 #' @param file_path Character string. Path to the PID file to parse.
 #'
 #' @return A list containing three elements:
-#'   \item{image_metadata}{Tibble with metadata sections from the file header}
+#'   \item{image_metadata}{Tibble with metadata sections from the file header,
+#'     including normalized \code{sample_id} for each row}
 #'   \item{image_records}{Tibble with basic image information (scan_id, image_number)}
 #'   \item{image_attributes}{Tibble with detailed image attributes and measurements}
 #'
@@ -344,6 +346,8 @@ parse_data_section_long <- function(data_lines, headers, scan_id, filename) {
 #'   \item{section_name}{Character. Name of the metadata section}
 #'   \item{key}{Character. Metadata key/parameter name}
 #'   \item{value}{Character. Metadata value}
+#'   \item{sample_id}{Character. Normalized SampleId value repeated for each metadata row;
+#'     \code{NA} when SampleId is missing}
 #'
 #' @details
 #' The function processes metadata by:
@@ -354,6 +358,8 @@ parse_data_section_long <- function(data_lines, headers, scan_id, filename) {
 #'   \item Adding filename as a special metadata record
 #'   \item Parsing SampleId to extract cruise, moc, and net components
 #'   \item Parsing Date field from Sample section to extract sample_date
+#'   \item Adding normalized \code{sample_id} column to all metadata rows
+#'   \item Warning when SampleId is missing (with \code{sample_id = NA})
 #'   \item Returning data in long format for easy filtering and analysis
 #' }
 #'
@@ -447,8 +453,25 @@ parse_metadata_sections_long <- function(metadata_lines, scan_id, filename) {
   # Parse SampleId and Date from Sample section
   parsed_fields <- parse_sample_fields(metadata_records, scan_id)
 
+  # Derive normalized sample_id from Sample/SampleId metadata
+  sample_id_rows <- metadata_records |>
+    dplyr::filter(section_name == "Sample", key == "SampleId") |>
+    dplyr::filter(!is.na(value), value != "")
+
+  sample_id_value <- if (nrow(sample_id_rows) > 0) {
+    sample_id_rows$value[[1]]
+  } else {
+    warning(
+      "SampleId missing in PID metadata for file: ",
+      filename,
+      "; setting sample_id to NA"
+    )
+    NA_character_
+  }
+
   # Combine all metadata records
-  metadata <- dplyr::bind_rows(filename_record, metadata_records, parsed_fields)
+  metadata <- dplyr::bind_rows(filename_record, metadata_records, parsed_fields) |>
+    dplyr::mutate(sample_id = sample_id_value)
 
   return(metadata)
 }

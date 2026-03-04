@@ -24,16 +24,16 @@ Generate a token to access the EcoTaxa API. This is saved to disk at a prescribe
 ```{r}
 #| label: authentication
 
-token <- ecotaxarapi::login(
-  LoginReq = ecotaxarapi::LoginReq(
+token <- login(
+  LoginReq = LoginReq(
     username = "ecotaxa_user",
     password = "ecotaxa_password"
   )
 )
 
 options(ecotaxa.token_path = "~/.my_ecotaxa_token")
-ecotaxarapi::api_token_path() # confirm path
-ecotaxarapi::save_api_token(token)
+api_token_path() # confirm path
+save_api_token(token)
 
 ```
 
@@ -44,7 +44,7 @@ You can search for projects to which you have access. The `search_projects` func
 ```{r}
 #| label: projects
 
-my_projects <- ecotaxarapi::search_projects()
+my_projects <- search_projects()
 my_projects[, c("projid", "title")]
 
 ```
@@ -72,7 +72,7 @@ You can create jobs to export data from EcoTaxa. A job is a request to export da
 
 # `for_admin`	(boolean): FALSE returns the jobs for current user else all of them
 
-jobs <- ecotaxarapi::list_jobs(for_admin = FALSE)
+jobs <- list_jobs(for_admin = FALSE)
 
 tibble::tibble(
   id = jobs$id,
@@ -98,10 +98,10 @@ Use the API to create a new job. You need to specify the project ID, filters, an
 ```{r}
 #| label: jobs-create-new
 
-filters_reqs <- ecotaxarapi::ProjectFilters()
+filters_reqs <- ProjectFilters()
 
 # export parameters
-export_reqs <- ecotaxarapi::GeneralExportReq(
+export_reqs <- GeneralExportReq(
   project_id        = 5421,
   split_by          = "none",
   with_images       = "none", # "first" "all" "none"
@@ -112,13 +112,13 @@ export_reqs <- ecotaxarapi::GeneralExportReq(
 )
 
 # generate export request body
-export_request_body <- ecotaxarapi::Body_export_object_set_general_object_set_export_general_post(
+export_request_body <- Body_export_object_set_general_object_set_export_general_post(
   filters = filters_reqs,
   request = export_reqs
 )
 
 # execute export request
-ecotaxarapi::export_object_set_general(export_request_body)
+export_object_set_general(export_request_body)
 
 ```
 

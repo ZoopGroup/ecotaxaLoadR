@@ -67,7 +67,7 @@ testthat::test_that("parse_pid_file works with sr2407 PID file", {
   # Check that metadata has expected structure
   metadata <- result$image_metadata
   if (nrow(metadata) > 0) {
-    expected_metadata_cols <- c("scan_id", "section_name", "key", "value")
+    expected_metadata_cols <- c("scan_id", "section_name", "key", "value", "sample_id")
     metadata_cols_present <- purrr::map_lgl(expected_metadata_cols, ~ .x %in% names(metadata))
     testthat::expect_true(all(metadata_cols_present))
     
@@ -149,9 +149,13 @@ testthat::test_that("parse_metadata_sections_long works correctly", {
   testthat::expect_true(nrow(result) > 0)
   
   # Check expected columns
-  expected_cols <- c("scan_id", "section_name", "key", "value")
+  expected_cols <- c("scan_id", "section_name", "key", "value", "sample_id")
   cols_present <- purrr::map_lgl(expected_cols, ~ .x %in% names(result))
   testthat::expect_true(all(cols_present))
+
+  # sample_id should be propagated to all rows
+  testthat::expect_true(all(result$sample_id == "sr2407_m6_n3"))
+  testthat::expect_true(any(result$section_name == "Sample" & result$key == "SampleId"))
   
   # Should have filename record
   testthat::expect_true(any(result$key == "filename"))
@@ -364,26 +368,57 @@ testthat::test_that("PID metadata extraction handles various section types", {
 
 testthat::test_that("PID functions handle edge cases gracefully", {
   # Test with empty metadata
-  empty_result <- ecotaxaLoadR:::parse_metadata_sections_long(
-    character(0), 
-    "test_scan", 
-    "test_file.pid"
+  testthat::expect_warning(
+    empty_result <- ecotaxaLoadR:::parse_metadata_sections_long(
+      character(0), 
+      "test_scan", 
+      "test_file.pid"
+    ),
+    "SampleId missing"
   )
   
   testthat::expect_s3_class(empty_result, "data.frame")
   testthat::expect_equal(nrow(empty_result), 1)  # Should have filename record
   testthat::expect_equal(empty_result$key[1], "filename")
+  testthat::expect_true("sample_id" %in% names(empty_result))
+  testthat::expect_true(all(is.na(empty_result$sample_id)))
   
   # Test with only section headers, no key-value pairs
   headers_only <- c("[Section1]", "[Section2]")
-  headers_result <- ecotaxaLoadR:::parse_metadata_sections_long(
-    headers_only, 
-    "test_scan", 
-    "test_file.pid"
+  testthat::expect_warning(
+    headers_result <- ecotaxaLoadR:::parse_metadata_sections_long(
+      headers_only, 
+      "test_scan", 
+      "test_file.pid"
+    ),
+    "SampleId missing"
   )
   
   testthat::expect_s3_class(headers_result, "data.frame")
   testthat::expect_equal(nrow(headers_result), 1)  # Should only have filename record
+  testthat::expect_true(all(is.na(headers_result$sample_id)))
+})
+
+testthat::test_that("parse_metadata_sections_long warns and sets sample_id NA when SampleId is missing", {
+  metadata_lines <- c(
+    "PID",
+    "[Sample]",
+    "Project= hypoxia",
+    "Date= 20240504-2248"
+  )
+
+  testthat::expect_warning(
+    result <- ecotaxaLoadR:::parse_metadata_sections_long(
+      metadata_lines,
+      "test_scan",
+      "missing_sample_id.pid"
+    ),
+    "SampleId missing"
+  )
+
+  testthat::expect_true("sample_id" %in% names(result))
+  testthat::expect_true(all(is.na(result$sample_id)))
+  testthat::expect_false(any(result$section_name == "Sample" & result$key == "SampleId"))
 })
 
 # NEW TESTS FOR SAMPLE FIELD PARSING
@@ -572,6 +607,10 @@ testthat::test_that("Integration: PID files with SampleId get parsed sample fiel
   sample_id_present <- any(metadata$section_name == "Sample" & metadata$key == "SampleId")
   
   if (sample_id_present) {
+    sample_id_values <- unique(metadata$sample_id)
+    testthat::expect_length(sample_id_values, 1)
+    testthat::expect_equal(sample_id_values, metadata$value[metadata$section_name == "Sample" & metadata$key == "SampleId"][1])
+
     # Should have parsed sample fields
     testthat::expect_true(any(metadata$section_name == "parsed_sample"))
     
@@ -601,6 +640,8 @@ testthat::test_that("Integration: complete workflow includes all parsed fields",
   sample_files <- any(metadata$section_name == "Sample" & metadata$key == "SampleId")
   
   if (sample_files) {
+    testthat::expect_true("sample_id" %in% names(metadata))
+
     # Should have parsed sample fields
     testthat::expect_true(any(metadata$section_name == "parsed_sample"))
     

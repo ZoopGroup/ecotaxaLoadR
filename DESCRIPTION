@@ -20,7 +20,7 @@ Imports:
     pointblank,
     purrr,
     readr,
-    sf,
+    rlang,
     stringr,
     SunCalcMeeus,
     tibble,
@@ -28,7 +28,7 @@ Imports:
     tools,
     utils
 Suggests: 
-    ecotaxarapi,
+    here,
     knitr,
     quarto,
     testthat (>= 3.0.0)

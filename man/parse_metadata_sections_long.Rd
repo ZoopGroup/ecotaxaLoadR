@@ -19,6 +19,8 @@ A tibble with columns:
 \item{section_name}{Character. Name of the metadata section}
 \item{key}{Character. Metadata key/parameter name}
 \item{value}{Character. Metadata value}
+\item{sample_id}{Character. Normalized SampleId value repeated for each metadata row;
+\code{NA} when SampleId is missing}
 }
 \description{
 Parses the metadata sections from PID file header lines,
@@ -35,6 +37,8 @@ The function processes metadata by:
 \item Adding filename as a special metadata record
 \item Parsing SampleId to extract cruise, moc, and net components
 \item Parsing Date field from Sample section to extract sample_date
+\item Adding normalized \code{sample_id} column to all metadata rows
+\item Warning when SampleId is missing (with \code{sample_id = NA})
 \item Returning data in long format for easy filtering and analysis
 }
 }
