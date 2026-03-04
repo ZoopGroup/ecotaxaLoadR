@@ -13,7 +13,8 @@ include \code{vessel}, \code{cruise_id}, \code{tow_number}, \code{net}, \code{la
 optionally \code{is_day}.}
 
 \item{hex_data_file}{Data frame produced by \code{\link[=load_hex_files]{load_hex_files()}} containing at
-minimum \code{tow} and \code{net_size} columns.}
+minimum \code{tow} and \code{net_size} columns; if \code{net} is present, joining is
+performed on both \code{tow} and \code{net}.}
 }
 \value{
 A tibble with one row per tow-number and net combination containing:
@@ -31,6 +32,8 @@ Warnings are emitted once per call when:
 \item \code{is_day} is absent (the column is added and filled with \code{NA}).
 \item Multiple distinct \code{is_day} values exist within a tow/net group (the first
 value is kept).
+\item Non-numeric \code{tow}/\code{net} key values are encountered while coercing keys to
+integer for joins.
 }
 }
 \examples{

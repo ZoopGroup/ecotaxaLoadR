@@ -9,7 +9,8 @@
 #'   `long`), `CTDDEPTH(M)`, `vol`, `datetime_gmt`, `datetime_local`, and
 #'   optionally `is_day`.
 #' @param hex_data_file Data frame produced by [load_hex_files()] containing at
-#'   minimum `tow` and `net_size` columns.
+#'   minimum `tow` and `net_size` columns; if `net` is present, joining is
+#'   performed on both `tow` and `net`.
 #'
 #' @return A tibble with one row per tow-number and net combination containing:
 #'   `vessel`, `cruise`, `tow`, `net`, `lat_decimal`, `long_decimal`,
@@ -21,6 +22,8 @@
 #' - `is_day` is absent (the column is added and filled with `NA`).
 #' - Multiple distinct `is_day` values exist within a tow/net group (the first
 #'   value is kept).
+#' - Non-numeric `tow`/`net` key values are encountered while coercing keys to
+#'   integer for joins.
 #'
 #' @examples
 #' \dontrun{
@@ -125,6 +128,24 @@ build_master <- function(pro_data_file, hex_data_file) {
     suppressWarnings(max(x, na.rm = TRUE))
   }
 
+  coerce_integer_key <- function(x, key_name, source_name) {
+    x_chr <- trimws(as.character(x))
+    x_chr[x_chr == ""] <- NA_character_
+    x_num <- suppressWarnings(as.numeric(x_chr))
+
+    bad_rows <- which(!is.na(x_chr) & is.na(x_num))
+    if (length(bad_rows) > 0) {
+      examples <- utils::head(unique(x_chr[bad_rows]), 5)
+      warning(
+        "Non-numeric values detected in ", source_name, "$", key_name,
+        "; coerced to NA. Examples: ",
+        paste(examples, collapse = ", ")
+      )
+    }
+
+    as.integer(x_num)
+  }
+
   pro_summary <- pro_data_file |>
     dplyr::group_by(.data$tow_number, .data$net) |>
     dplyr::summarise(
@@ -140,15 +161,29 @@ build_master <- function(pro_data_file, hex_data_file) {
       is_day          = dplyr::first(.data$is_day),
       .groups = "drop"
     ) |>
-    dplyr::rename(tow = tow_number)
+    dplyr::rename(tow = tow_number) |>
+    dplyr::mutate(
+      tow = coerce_integer_key(.data$tow, "tow", "pro_data_file"),
+      net = coerce_integer_key(.data$net, "net", "pro_data_file")
+    )
 
   hex_ready <- hex_data_file |>
-    dplyr::mutate(tow = as.character(tow)) |>
-    dplyr::select(tow, net_size)
+    dplyr::mutate(
+      tow = coerce_integer_key(.data$tow, "tow", "hex_data_file")
+    )
+
+  by_keys <- "tow"
+  if ("net" %in% names(hex_ready)) {
+    hex_ready <- hex_ready |>
+      dplyr::mutate(net = coerce_integer_key(.data$net, "net", "hex_data_file"))
+    by_keys <- c("tow", "net")
+  }
+
+  hex_ready <- hex_ready |>
+    dplyr::select(dplyr::all_of(by_keys), .data$net_size)
 
   master <- pro_summary |>
-    dplyr::mutate(tow = as.character(tow)) |>
-    dplyr::left_join(hex_ready, by = "tow") |>
+    dplyr::left_join(hex_ready, by = by_keys) |>
     dplyr::select(
       vessel, cruise, tow, net,
       lat_decimal, long_decimal,
