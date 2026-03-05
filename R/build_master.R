@@ -15,6 +15,7 @@
 #' @return A tibble with one row per tow-number and net combination containing:
 #'   `vessel`, `cruise`, `tow`, `net`, `lat_decimal`, `long_decimal`,
 #'   `min_depth`, `max_depth`, `volume_filtered`, `time_start_gmt`,
+#'   `date_start_gmt`,
 #'   `time_start_local`, `is_day`, and `net_size`.
 #'
 #' @details
@@ -156,7 +157,8 @@ build_master <- function(pro_data_file, hex_data_file) {
       min_depth       = safe_min(.data[["CTDDEPTH(M)"]]),
       max_depth       = safe_max(.data[["CTDDEPTH(M)"]]),
       volume_filtered = safe_max(.data$vol),
-      time_start_gmt   = safe_min(.data$datetime_gmt),
+      time_start_gmt  = safe_min(.data$datetime_gmt),
+      date_start_gmt  = base::as.Date(safe_min(.data$datetime_gmt)),
       time_start_local = safe_min(.data$datetime_local),
       is_day          = dplyr::first(.data$is_day),
       .groups = "drop"
@@ -180,7 +182,7 @@ build_master <- function(pro_data_file, hex_data_file) {
   }
 
   hex_ready <- hex_ready |>
-    dplyr::select(dplyr::all_of(by_keys), .data$net_size)
+    dplyr::select(dplyr::all_of(by_keys), "net_size")
 
   master <- pro_summary |>
     dplyr::left_join(hex_ready, by = by_keys) |>
@@ -189,7 +191,7 @@ build_master <- function(pro_data_file, hex_data_file) {
       lat_decimal, long_decimal,
       min_depth, max_depth,
       volume_filtered,
-      time_start_gmt, time_start_local,
+      time_start_gmt, date_start_gmt, time_start_local,
       is_day, net_size
     )
 

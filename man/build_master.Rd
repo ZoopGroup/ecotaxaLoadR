@@ -20,6 +20,7 @@ performed on both \code{tow} and \code{net}.}
 A tibble with one row per tow-number and net combination containing:
 \code{vessel}, \code{cruise}, \code{tow}, \code{net}, \code{lat_decimal}, \code{long_decimal},
 \code{min_depth}, \code{max_depth}, \code{volume_filtered}, \code{time_start_gmt},
+\code{date_start_gmt},
 \code{time_start_local}, \code{is_day}, and \code{net_size}.
 }
 \description{

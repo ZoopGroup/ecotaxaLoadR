@@ -23,7 +23,8 @@
 #'   \item \code{ship}
 #'   \item \code{project}
 #'   \item \code{station}
-#'   \item \code{moc}
+#'   \item \code{cruise}
+#'   \item \code{tow}
 #'   \item \code{net}
 #'   \item \code{sample_date}
 #'   \item \code{latitude}
@@ -57,21 +58,21 @@ summarize_pid <- function(pid_metadata, conflict_mode = c("expand_rows", "stop")
   conflict_mode <- match.arg(conflict_mode)
 
   numeric_fields <- c(
-    "moc", "net", "latitude", "longitude", "min_depth", "max_depth",
+    "tow", "net", "latitude", "longitude", "min_depth", "max_depth",
     "netmesh", "netsurf", "volume_filtered"
   )
 
   key_map <- tibble::tibble(
     section_name = c(
-      "Sample", "Sample", "Sample", "parsed_sample", "parsed_sample", "parsed_sample",
+      "Sample", "Sample", "Sample", "parsed_sample", "parsed_sample", "parsed_sample", "parsed_sample",
       "Sample", "Sample", "Sample", "Sample", "Sample", "Sample", "Sample"
     ),
     key = c(
-      "Ship", "Scientificprog", "StationId", "moc", "net", "sample_date",
+      "Ship", "Scientificprog", "StationId", "cruise", "tow", "net", "sample_date",
       "Latitude", "Longitude", "Zmin", "Zmax", "Netmesh", "Netsurf", "Vol"
     ),
     out = c(
-      "ship", "project", "station", "moc", "net", "sample_date",
+      "ship", "project", "station", "cruise", "tow", "net", "sample_date",
       "latitude", "longitude", "min_depth", "max_depth", "netmesh", "netsurf", "volume_filtered"
     )
   )
@@ -139,7 +140,7 @@ summarize_pid <- function(pid_metadata, conflict_mode = c("expand_rows", "stop")
   if (conflict_mode == "stop" && nrow(conflicts) > 0) {
     conflict_labels <- conflicts |>
       dplyr::mutate(label = paste0(.data$sample_id, " / ", .data$field)) |>
-      dplyr::select(.data$label) |>
+      dplyr::select("label") |>
       dplyr::distinct() |>
       dplyr::pull(.data$label)
 
@@ -159,8 +160,8 @@ summarize_pid <- function(pid_metadata, conflict_mode = c("expand_rows", "stop")
       .groups = "drop"
     ) |>
     tidyr::pivot_wider(
-      names_from = .data$field,
-      values_from = .data$value
+      names_from = "field",
+      values_from = "value"
     )
 
   summarized_scan <- purrr::reduce(

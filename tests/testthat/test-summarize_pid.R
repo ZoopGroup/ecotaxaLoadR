@@ -6,7 +6,7 @@ testthat::test_that("summarize_pid returns one row per sample_id with expected c
   summary_tbl <- ecotaxaLoadR::summarize_pid(pid$metadata)
 
   expected_cols <- c(
-    "sample_id", "scan_id", "has_conflict", "ship", "project", "station", "moc", "net",
+    "sample_id", "scan_id", "has_conflict", "ship", "project", "station", "cruise", "tow", "net",
     "sample_date", "latitude", "longitude", "min_depth", "max_depth",
     "netmesh", "netsurf", "volume_filtered"
   )
@@ -17,7 +17,7 @@ testthat::test_that("summarize_pid returns one row per sample_id with expected c
   testthat::expect_equal(nrow(summary_tbl), dplyr::n_distinct(pid$metadata$sample_id))
 
   numeric_cols <- c(
-    "moc", "net", "latitude", "longitude", "min_depth", "max_depth",
+    "tow", "net", "latitude", "longitude", "min_depth", "max_depth",
     "netmesh", "netsurf", "volume_filtered"
   )
 
@@ -171,11 +171,32 @@ testthat::test_that("summarize_pid uses parsed sample_date key", {
 })
 
 
+testthat::test_that("summarize_pid uses parsed cruise key", {
+  pid <- ecotaxaLoadR::load_pid_files(
+    testthat::test_path("test-data", "pid_files")
+  )
+
+  expected_cruise <- pid$metadata |>
+    dplyr::filter(key == "cruise") |>
+    dplyr::distinct(sample_id, cruise = value)
+
+  summary_tbl <- ecotaxaLoadR::summarize_pid(pid$metadata)
+
+  joined <- dplyr::left_join(
+    dplyr::select(summary_tbl, sample_id, cruise),
+    expected_cruise,
+    by = "sample_id"
+  )
+
+  testthat::expect_true(all(joined$cruise.x == joined$cruise.y))
+})
+
+
 testthat::test_that("summarize_pid returns NA for missing extracted keys", {
   synthetic_metadata <- tibble::tibble(
     sample_id = rep("sr9999_m1_n1", 2),
     scan_id = rep("sr9999_m1_n1_d1_a_1", 2),
-    key = c("sample_date", "moc"),
+    key = c("sample_date", "tow"),
     value = c("2024-01-01", "1")
   )
 
@@ -185,8 +206,9 @@ testthat::test_that("summarize_pid returns NA for missing extracted keys", {
   testthat::expect_true(is.na(summary_tbl$ship))
   testthat::expect_true(is.na(summary_tbl$project))
   testthat::expect_true(is.na(summary_tbl$station))
+  testthat::expect_true(is.na(summary_tbl$cruise))
   testthat::expect_equal(summary_tbl$sample_date, "2024-01-01")
-  testthat::expect_equal(summary_tbl$moc, 1)
+  testthat::expect_equal(summary_tbl$tow, 1)
 })
 
 

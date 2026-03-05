@@ -24,6 +24,9 @@ testthat::test_that("build_master matches HEX tow with leading zeros", {
   testthat::expect_identical(result$tow, 1L)
   testthat::expect_identical(result$net, 1L)
   testthat::expect_equal(result$net_size, 1)
+  testthat::expect_true("date_start_gmt" %in% names(result))
+  testthat::expect_s3_class(result$date_start_gmt, "Date")
+  testthat::expect_equal(result$date_start_gmt, as.Date("2024-01-01"))
 })
 
 
@@ -54,4 +57,7 @@ testthat::test_that("build_master joins by tow and net when HEX net is available
   result_sorted <- dplyr::arrange(result, .data$net)
   testthat::expect_identical(result_sorted$net, c(1L, 2L))
   testthat::expect_equal(result_sorted$net_size, c(0.5, 1.0))
+  testthat::expect_true("date_start_gmt" %in% names(result_sorted))
+  testthat::expect_s3_class(result_sorted$date_start_gmt, "Date")
+  testthat::expect_true(all(result_sorted$date_start_gmt == as.Date("2024-01-01")))
 })

@@ -335,7 +335,7 @@ parse_data_section_long <- function(data_lines, headers, scan_id, filename) {
 #' @description Parses the metadata sections from PID file header lines,
 #'   extracting key-value pairs organized by section headers into a long-format tibble.
 #'   Also parses SampleId and Date fields from the Sample subsection to extract
-#'   cruise, moc, net, and sample_date information.
+#'   cruise, tow, net, and sample_date information.
 #'
 #' @param metadata_lines Character vector. Lines containing metadata from file header.
 #' @param scan_id Character string. Unique identifier for this scan.
@@ -356,7 +356,7 @@ parse_data_section_long <- function(data_lines, headers, scan_id, filename) {
 #'   \item Parsing key=value pairs within each section
 #'   \item Propagating section names to associated key-value pairs
 #'   \item Adding filename as a special metadata record
-#'   \item Parsing SampleId to extract cruise, moc, and net components
+#'   \item Parsing SampleId to extract cruise, tow, and net components
 #'   \item Parsing Date field from Sample section to extract sample_date
 #'   \item Adding normalized \code{sample_id} column to all metadata rows
 #'   \item Warning when SampleId is missing (with \code{sample_id = NA})
@@ -479,7 +479,7 @@ parse_metadata_sections_long <- function(metadata_lines, scan_id, filename) {
 
 #' @title Parse Sample Fields from Metadata
 #' @description Parses SampleId and Date fields from the Sample section of metadata
-#'   to extract cruise, moc, net, and sample_date components using purrr functional programming.
+#'   to extract cruise, tow, net, and sample_date components using purrr functional programming.
 #'
 #' @param metadata_records Tibble. Processed metadata records.
 #' @param scan_id Character string. Unique identifier for this scan.
@@ -518,15 +518,15 @@ parse_sample_fields <- function(metadata_records, scan_id) {
         # Create records for parsed components
         # matches[1] = full match
         # matches[2] = cruise (e.g., "sr2408")
-        # matches[3] = moc letter (e.g., "m") 
-        # matches[4] = moc number (e.g., "13") <- THIS is what we want
+        # matches[3] = tow label letter (e.g., "m") 
+        # matches[4] = tow number (e.g., "13")
         # matches[5] = net letter (e.g., "n")
-        # matches[6] = net number (e.g., "8") <- THIS is what we want
+        # matches[6] = net number (e.g., "8")
         tibble::tibble(
           scan_id = rep(scan_id, 3),
           section_name = rep("parsed_sample", 3),
-          key = c("cruise", "moc", "net"),
-          value = c(matches[2], matches[4], matches[6])  # Fixed: use matches[4] and matches[6]
+          key = c("cruise", "tow", "net"),
+          value = c(matches[2], matches[4], matches[6])
         )
       } else {
         # No pattern matched - return empty tibble

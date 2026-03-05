@@ -171,16 +171,18 @@ testthat::test_that("parse_metadata_sections_long works correctly", {
   testthat::expect_true(any(result$section_name == "parsed_sample"))
   
   parsed_fields <- result[result$section_name == "parsed_sample", ]
-  expected_keys <- c("cruise", "moc", "net", "sample_date")
+  expected_keys <- c("cruise", "tow", "net", "sample_date")
   
-  for (key in expected_keys) {
-    testthat::expect_true(key %in% parsed_fields$key, 
-                         info = paste("Missing parsed field:", key))
-  }
+  purrr::walk(expected_keys, function(key_name) {
+    testthat::expect_true(
+      key_name %in% parsed_fields$key,
+      info = paste("Missing parsed field:", key_name)
+    )
+  })
   
   # Check specific values
   testthat::expect_equal(parsed_fields$value[parsed_fields$key == "cruise"], "sr2407")
-  testthat::expect_equal(parsed_fields$value[parsed_fields$key == "moc"], "6")
+  testthat::expect_equal(parsed_fields$value[parsed_fields$key == "tow"], "6")
   testthat::expect_equal(parsed_fields$value[parsed_fields$key == "net"], "3")
   testthat::expect_equal(parsed_fields$value[parsed_fields$key == "sample_date"], "2024-05-04")
 })
@@ -423,7 +425,7 @@ testthat::test_that("parse_metadata_sections_long warns and sets sample_id NA wh
 
 # NEW TESTS FOR SAMPLE FIELD PARSING
 
-testthat::test_that("parse_sample_fields extracts cruise, moc, and net from SampleId", {
+testthat::test_that("parse_sample_fields extracts cruise, tow, and net from SampleId", {
   # Create test metadata with SampleId
   metadata_records <- tibble::tibble(
     scan_id = "test_scan",
@@ -437,19 +439,19 @@ testthat::test_that("parse_sample_fields extracts cruise, moc, and net from Samp
   testthat::expect_s3_class(result, "data.frame")
   testthat::expect_true(nrow(result) > 0)
   
-  # Check that cruise, moc, net are extracted
+  # Check that cruise, tow, net are extracted
   parsed_keys <- result$key
   testthat::expect_true("cruise" %in% parsed_keys)
-  testthat::expect_true("moc" %in% parsed_keys)
+  testthat::expect_true("tow" %in% parsed_keys)
   testthat::expect_true("net" %in% parsed_keys)
   
   # Check values are correct
   cruise_value <- result$value[result$key == "cruise"]
-  moc_value <- result$value[result$key == "moc"]
+  tow_value <- result$value[result$key == "tow"]
   net_value <- result$value[result$key == "net"]
   
   testthat::expect_equal(cruise_value, "sr2407")
-  testthat::expect_equal(moc_value, "6")   # Just the number, not "m6"
+  testthat::expect_equal(tow_value, "6")   # Just the number, not "m6"
   testthat::expect_equal(net_value, "3")   # Just the number, not "n3"
   
   # Check section_name is correct
@@ -509,9 +511,9 @@ testthat::test_that("parse_sample_fields handles invalid Date formats", {
 testthat::test_that("parse_sample_fields works with different SampleId patterns", {
   # Test different valid SampleId formats
   test_cases <- list(
-    list(sample_id = "sr2407_m6_n3", expected = list(cruise = "sr2407", moc = "6", net = "3")),
-    list(sample_id = "ab1234_m13_n8", expected = list(cruise = "ab1234", moc = "13", net = "8")),
-    list(sample_id = "test2025_m1_n15", expected = list(cruise = "test2025", moc = "1", net = "15"))
+    list(sample_id = "sr2407_m6_n3", expected = list(cruise = "sr2407", tow = "6", net = "3")),
+    list(sample_id = "ab1234_m13_n8", expected = list(cruise = "ab1234", tow = "13", net = "8")),
+    list(sample_id = "test2025_m1_n15", expected = list(cruise = "test2025", tow = "1", net = "15"))
   )
   
   purrr::walk(test_cases, function(test_case) {
@@ -526,11 +528,11 @@ testthat::test_that("parse_sample_fields works with different SampleId patterns"
     
     if (nrow(result) > 0) {
       cruise_value <- result$value[result$key == "cruise"]
-      moc_value <- result$value[result$key == "moc"]
+      tow_value <- result$value[result$key == "tow"]
       net_value <- result$value[result$key == "net"]
       
       testthat::expect_equal(cruise_value, test_case$expected$cruise)
-      testthat::expect_equal(moc_value, test_case$expected$moc)   # Just numbers
+      testthat::expect_equal(tow_value, test_case$expected$tow)   # Just numbers
       testthat::expect_equal(net_value, test_case$expected$net)   # Just numbers
     } else {
       testthat::fail(paste("Failed to parse SampleId:", test_case$sample_id))
@@ -579,18 +581,20 @@ testthat::test_that("parse_sample_fields handles combined SampleId and Date", {
   testthat::expect_s3_class(result, "data.frame")
   testthat::expect_true(nrow(result) > 0)
   
-  # Should have all 4 parsed fields: cruise, moc, net, sample_date
-  expected_keys <- c("cruise", "moc", "net", "sample_date")
+  # Should have all 4 parsed fields: cruise, tow, net, sample_date
+  expected_keys <- c("cruise", "tow", "net", "sample_date")
   parsed_keys <- result$key
   
-  for (key in expected_keys) {
-    testthat::expect_true(key %in% parsed_keys, 
-                         info = paste("Missing key:", key))
-  }
+  purrr::walk(expected_keys, function(key_name) {
+    testthat::expect_true(
+      key_name %in% parsed_keys,
+      info = paste("Missing key:", key_name)
+    )
+  })
   
   # Check specific values
   testthat::expect_equal(result$value[result$key == "cruise"], "sr2408")
-  testthat::expect_equal(result$value[result$key == "moc"], "13")     # Just the number
+  testthat::expect_equal(result$value[result$key == "tow"], "13")     # Just the number
   testthat::expect_equal(result$value[result$key == "net"], "8")      # Just the number
   testthat::expect_equal(result$value[result$key == "sample_date"], "2024-05-04")
 })
@@ -615,12 +619,14 @@ testthat::test_that("Integration: PID files with SampleId get parsed sample fiel
     testthat::expect_true(any(metadata$section_name == "parsed_sample"))
     
     parsed_fields <- metadata[metadata$section_name == "parsed_sample", ]
-    expected_keys <- c("cruise", "moc", "net")
+    expected_keys <- c("cruise", "tow", "net")
     
-    for (key in expected_keys) {
-      testthat::expect_true(key %in% parsed_fields$key, 
-                           info = paste("Missing parsed field:", key))
-    }
+    purrr::walk(expected_keys, function(key_name) {
+      testthat::expect_true(
+        key_name %in% parsed_fields$key,
+        info = paste("Missing parsed field:", key_name)
+      )
+    })
     
     # Check that cruise matches filename pattern
     cruise_value <- parsed_fields$value[parsed_fields$key == "cruise"]
@@ -648,7 +654,7 @@ testthat::test_that("Integration: complete workflow includes all parsed fields",
     parsed_records <- metadata[metadata$section_name == "parsed_sample", ]
     
     # Should have parsed fields for files with SampleId
-    possible_keys <- c("cruise", "moc", "net", "sample_date")
+    possible_keys <- c("cruise", "tow", "net", "sample_date")
     present_keys <- unique(parsed_records$key)
     
     # At least some keys should be present
@@ -673,6 +679,6 @@ testthat::test_that("parse_sample_fields pattern extensibility", {
   # Test that the function structure supports adding new patterns
   # (This is more of a code structure test)
   testthat::expect_true("cruise" %in% result$key)
-  testthat::expect_true("moc" %in% result$key)
+  testthat::expect_true("tow" %in% result$key)
   testthat::expect_true("net" %in% result$key)
 })

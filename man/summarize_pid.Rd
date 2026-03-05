@@ -30,7 +30,8 @@ A tibble with one row per \code{sample_id} and columns:
 \item \code{ship}
 \item \code{project}
 \item \code{station}
-\item \code{moc}
+\item \code{cruise}
+\item \code{tow}
 \item \code{net}
 \item \code{sample_date}
 \item \code{latitude}

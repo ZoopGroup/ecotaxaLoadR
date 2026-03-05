@@ -16,6 +16,6 @@ A tibble with parsed fields added as new metadata records.
 }
 \description{
 Parses SampleId and Date fields from the Sample section of metadata
-to extract cruise, moc, net, and sample_date components using purrr functional programming.
+to extract cruise, tow, net, and sample_date components using purrr functional programming.
 }
 \keyword{internal}
