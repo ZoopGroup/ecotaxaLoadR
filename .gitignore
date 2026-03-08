@@ -49,3 +49,6 @@ po/*~
 rsconnect/
 inst/doc
 **/.quarto/
+
+# .vscode settings
+.vscode/
