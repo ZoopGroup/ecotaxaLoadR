@@ -13,10 +13,13 @@
 #'   performed on both `tow` and `net`.
 #'
 #' @return A tibble with one row per tow-number and net combination containing:
-#'   `vessel`, `cruise`, `tow`, `net`, `lat_decimal`, `long_decimal`,
+#'   `sample_id`, `vessel`, `cruise`, `tow`, `net`, `fraction_ID`,
+#'   `lat_decimal`,
+#'   `long_decimal`, `lat_dmm`, `long_dmm`,
 #'   `min_depth`, `max_depth`, `volume_filtered`, `time_start_gmt`,
 #'   `date_start_gmt`,
-#'   `time_start_local`, `is_day`, and `net_size`.
+#'   `time_start_local`, `YYYYMMDD-HHMM_local`, `is_day`, `net_size`, and
+#'   empty split/Zooscan review columns.
 #'
 #' @details
 #' Warnings are emitted once per call when:
@@ -147,6 +150,35 @@ build_master <- function(pro_data_file, hex_data_file) {
     as.integer(x_num)
   }
 
+  format_coord_dmm <- function(x, is_longitude = FALSE) {
+    x_num <- suppressWarnings(as.numeric(x))
+    out <- rep(NA_character_, length(x_num))
+
+    valid <- !is.na(x_num)
+    if (!any(valid)) {
+      return(out)
+    }
+
+    abs_x <- abs(x_num[valid])
+    degrees <- floor(abs_x)
+    minutes <- round((abs_x - degrees) * 60, 3)
+
+    rollover <- minutes >= 60
+    if (any(rollover)) {
+      degrees[rollover] <- degrees[rollover] + 1
+      minutes[rollover] <- 0
+    }
+
+    hemisphere <- if (is_longitude) {
+      ifelse(x_num[valid] < 0, "W", "E")
+    } else {
+      ifelse(x_num[valid] < 0, "S", "N")
+    }
+
+    out[valid] <- sprintf("%d\u00B0%06.3f %s", degrees, minutes, hemisphere)
+    out
+  }
+
   pro_summary <- pro_data_file |>
     dplyr::group_by(.data$tow_number, .data$net) |>
     dplyr::summarise(
@@ -163,7 +195,8 @@ build_master <- function(pro_data_file, hex_data_file) {
       is_day          = dplyr::first(.data$is_day),
       .groups = "drop"
     ) |>
-    dplyr::rename(tow = tow_number) |>
+    dplyr::mutate(tow = .data$tow_number) |>
+    dplyr::select(-dplyr::all_of("tow_number")) |>
     dplyr::mutate(
       tow = coerce_integer_key(.data$tow, "tow", "pro_data_file"),
       net = coerce_integer_key(.data$net, "net", "pro_data_file")
@@ -184,16 +217,51 @@ build_master <- function(pro_data_file, hex_data_file) {
   hex_ready <- hex_ready |>
     dplyr::select(dplyr::all_of(by_keys), "net_size")
 
+  output_columns <- c(
+    "sample_id",
+    "vessel", "cruise", "tow", "net", "fraction_ID",
+    "lat_decimal", "long_decimal",
+    "lat_dmm", "long_dmm",
+    "min_depth", "max_depth",
+    "volume_filtered",
+    "time_start_gmt", "date_start_gmt", "time_start_local",
+    "YYYYMMDD-HHMM_local",
+    "is_day", "net_size",
+    "# boat splits", "# land splits", "total splits",
+    "Sub part", "Sub fraction", "Zooscan date", "tech.",
+    "frame", "DPI", "Zooscan file names", "Particles",
+    "Doubles", "% Doubles", "Scan?", "Doubles?",
+    "Upload ready?", "Ecotaxa?", "Comments"
+  )
+
   master <- pro_summary |>
     dplyr::left_join(hex_ready, by = by_keys) |>
-    dplyr::select(
-      vessel, cruise, tow, net,
-      lat_decimal, long_decimal,
-      min_depth, max_depth,
-      volume_filtered,
-      time_start_gmt, date_start_gmt, time_start_local,
-      is_day, net_size
-    )
+    dplyr::mutate(
+      sample_id = NA_character_,
+      fraction_ID = NA_character_,
+      lat_dmm = format_coord_dmm(.data$lat_decimal, is_longitude = FALSE),
+      long_dmm = format_coord_dmm(.data$long_decimal, is_longitude = TRUE),
+      `YYYYMMDD-HHMM_local` = format(.data$time_start_local, "%Y%m%d-%H%M"),
+      `# boat splits` = NA_character_,
+      `# land splits` = NA_character_,
+      `total splits` = NA_character_,
+      `Sub part` = NA_character_,
+      `Sub fraction` = NA_character_,
+      `Zooscan date` = NA_character_,
+      `tech.` = NA_character_,
+      `frame` = NA_character_,
+      `DPI` = NA_character_,
+      `Zooscan file names` = NA_character_,
+      `Particles` = NA_character_,
+      `Doubles` = NA_character_,
+      `% Doubles` = NA_character_,
+      `Scan?` = NA_character_,
+      `Doubles?` = NA_character_,
+      `Upload ready?` = NA_character_,
+      `Ecotaxa?` = NA_character_,
+      `Comments` = NA_character_
+    ) |>
+    dplyr::select(dplyr::all_of(output_columns))
 
   return(master)
 }

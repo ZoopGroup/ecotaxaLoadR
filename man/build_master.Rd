@@ -18,10 +18,13 @@ performed on both \code{tow} and \code{net}.}
 }
 \value{
 A tibble with one row per tow-number and net combination containing:
-\code{vessel}, \code{cruise}, \code{tow}, \code{net}, \code{lat_decimal}, \code{long_decimal},
+\code{sample_id}, \code{vessel}, \code{cruise}, \code{tow}, \code{net}, \code{fraction_ID},
+\code{lat_decimal},
+\code{long_decimal}, \code{lat_dmm}, \code{long_dmm},
 \code{min_depth}, \code{max_depth}, \code{volume_filtered}, \code{time_start_gmt},
 \code{date_start_gmt},
-\code{time_start_local}, \code{is_day}, and \code{net_size}.
+\code{time_start_local}, \code{YYYYMMDD-HHMM_local}, \code{is_day}, \code{net_size}, and
+empty split/Zooscan review columns.
 }
 \description{
 Summarize PRO-derived cast data by tow and net, then append HEX header
